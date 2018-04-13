@@ -3,7 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 )
+
+func write(buf io.Writer, order binary.ByteOrder, data interface{}) {
+	err := binary.Write(buf, order, data)
+	check(err)
+}
 
 func parseEtherHeader(data [14]byte) ether_header {
 	var ret ether_header
@@ -59,41 +65,30 @@ func makeRndis(length int) []byte {
 	var data_offset uint32 = 0x24
 	var data_length uint32 = uint32(length)
 
-	err := binary.Write(buf, binary.LittleEndian, msg_type)
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, msg_len)
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, data_offset)
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, data_length)
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, uint32(0))
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, uint32(0))
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, uint32(0))
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, uint32(0))
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, uint32(0))
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, uint32(0))
-	check(err)
-
-	err = binary.Write(buf, binary.LittleEndian, uint32(0))
-	check(err)
+	write(buf, binary.LittleEndian, msg_type)
+	write(buf, binary.LittleEndian, msg_len)
+	write(buf, binary.LittleEndian, data_offset)
+	write(buf, binary.LittleEndian, data_length)
+	write(buf, binary.LittleEndian, uint32(0))
+	write(buf, binary.LittleEndian, uint32(0))
+	write(buf, binary.LittleEndian, uint32(0))
+	write(buf, binary.LittleEndian, uint32(0))
+	write(buf, binary.LittleEndian, uint32(0))
+	write(buf, binary.LittleEndian, uint32(0))
+	write(buf, binary.LittleEndian, uint32(0))
 
 	return buf.Bytes()
 
+}
+
+func makeEther(source [6]byte, dest [6]byte, proto uint16) []byte {
+	buf := new(bytes.Buffer)
+
+	write(buf, binary.LittleEndian, source)
+	write(buf, binary.LittleEndian, dest)
+	write(buf, binary.LittleEndian, proto)
+
+	return buf.Bytes()
 }
 
 func identifyRequest(buf []byte, length int) string {

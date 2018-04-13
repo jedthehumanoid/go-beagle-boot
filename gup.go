@@ -19,6 +19,8 @@ const bootpSize = 300
 const tftpSize = 4
 const fullSize = 386
 
+var server_hwaddr = [6]byte{0x9a, 0x1f, 0x85, 0x1c, 0x3d, 0x0e}
+
 const maxbuf = 450
 
 var ctx *gousb.Context
@@ -42,7 +44,7 @@ func processBOOTP(data []byte) {
 	var ether_buf [etherSize]byte
 	var udp_buf [udpSize]byte
 
-	fmt.Println(data)
+	//fmt.Println(data)
 
 	copy(ether_buf[:], data[rndisSize:])
 	copy(udp_buf[:], data[rndisSize+etherSize+ipSize:])
@@ -56,6 +58,8 @@ func processBOOTP(data []byte) {
 	fmt.Println(udppacket)
 
 	fmt.Println(rndis)
+
+	fmt.Println(toHexString(makeEther(etherheader.h_source, server_hwaddr, 8)))
 
 }
 
