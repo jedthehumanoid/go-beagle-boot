@@ -25,17 +25,31 @@ const maxbuf = 450
 
 var ctx *gousb.Context
 
-type ether_header struct {
-	h_dest   [6]byte
-	h_source [6]byte
-	h_proto  uint16
+type etherHeader struct {
+	Dest   [6]byte
+	Source [6]byte
+	Proto  uint16
 }
 
-type udp_packet struct {
-	udpSrc  uint16
-	udpDest uint16
-	udpLen  uint16
-	chkSum  uint16
+type udpPacket struct {
+	Src    uint16
+	Dest   uint16
+	Len    uint16
+	ChkSum uint16
+}
+
+type rndisPacket struct {
+	MsgType          uint32
+	MsgLength        uint32
+	DataOffset       uint32
+	DataLength       uint32
+	BandOffset       uint32
+	BandLen          uint32
+	OutBandElements  uint32
+	PacketOffset     uint32
+	PacketInfoLength uint32
+	ReservedFirst    uint32
+	ReservedSecond   uint32
 }
 
 func processBOOTP(data []byte) {
@@ -58,9 +72,7 @@ func processBOOTP(data []byte) {
 	fmt.Println(udppacket)
 
 	fmt.Println(rndis)
-
-	fmt.Println(toHexString(makeEther(etherheader.h_source, server_hwaddr, 8)))
-
+	fmt.Println(etherHeader{etherheader.Source, server_hwaddr, 8})
 }
 
 func sendSPL() bool {

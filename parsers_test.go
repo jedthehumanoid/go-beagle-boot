@@ -9,15 +9,15 @@ func TestParseEtherHeader(t *testing.T) {
 
 	resp := parseEtherHeader([14]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14})
 
-	if !byteSliceEquals(resp.h_dest[:], []byte{1, 2, 3, 4, 5, 6}) {
+	if !byteSliceEquals(resp.Dest[:], []byte{1, 2, 3, 4, 5, 6}) {
 		t.Error("Expected {1,2,3,4,5,6}")
 	}
-	if !byteSliceEquals(resp.h_source[:], []byte{7, 8, 9, 10, 11, 12}) {
+	if !byteSliceEquals(resp.Source[:], []byte{7, 8, 9, 10, 11, 12}) {
 		t.Error("Expected {7,8,9,10,11,12}")
 	}
 
-	if resp.h_proto != 3342 {
-		t.Error("Expected ", resp.h_proto)
+	if resp.Proto != 3342 {
+		t.Error("Expected ", resp.Proto)
 	}
 }
 
@@ -30,13 +30,22 @@ func TestParseUdpPacket(t *testing.T) {
 }
 
 func TestMakeRndis(t *testing.T) {
-	ret := toHexString(makeRndis(342))
+	rndis := makeRndis(342)
 
-	if ret != "01 00 00 00 82 01 00 00 24 00 00 00 56 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 " {
-		t.Error("wrong")
+	if rndis.MsgType != 1 {
+		t.Error("Wrong type")
 	}
-
+	if rndis.MsgLength != 386 {
+		t.Error("Wrong message length")
+	}
+	if rndis.DataOffset != 0x24 {
+		t.Error("Wrong data offset")
+	}
+	if rndis.DataLength != 342 {
+		t.Error("Wrong data length")
+	}
 }
+
 func TestIdentifyRequest(t *testing.T) {
 	if identifyRequest([]byte{0, 0, 0, 0, 0xC2}, 0) != "BOOTP" {
 		t.Error("Expected BOOTP")
