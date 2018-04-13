@@ -10,39 +10,55 @@ import (
 const romvid gousb.ID = 0x0451
 const rompid gousb.ID = 0x6141
 
+const rndisSize = 44
+const etherSize = 14
+const arp_Size = 28
+const ipSize = 20
+const udpSize = 8
+const bootpSize = 300
+const tftpSize = 4
+const fullSize = 386
+
+const maxbuf = 450
+
 var ctx *gousb.Context
 
-func check(err error) {
-	if err != nil {
-		panic(err)
-	}
+type ether_header struct {
+	h_dest   [6]byte
+	h_source [6]byte
+	h_proto  uint16
 }
 
-func identifyRequest(buf []byte, length int) string {
-
-	val := buf[4]
-
-	if val == 0xc2 || val == 0x6c {
-		return "BOOTP"
-	}
-	if val == 0x56 {
-		return "ARP"
-	}
-
-	if int(val) == (0x5f+length) || int(val) == (0x76+length) {
-		return "TFTP"
-	}
-
-	if val == 0x5a {
-		return "TFTP_Data"
-	}
-
-	return "notIdentified"
+type udp_packet struct {
+	udpSrc  uint16
+	udpDest uint16
+	udpLen  uint16
+	chkSum  uint16
 }
 
 func processBOOTP(data []byte) {
 	fmt.Println("processBOOTP")
+
+	var ether_buf [etherSize]byte
+	var udp_buf [udpSize]byte
+
+	fmt.Println(data)
+
+	copy(ether_buf[:], data[rndisSize:])
+	copy(udp_buf[:], data[rndisSize+etherSize+ipSize:])
+
+	etherheader := parseEtherHeader(ether_buf)
+	udppacket := parseUdpPacket(udp_buf)
+
+	rndis := makeRndis(fullSize - rndisSize)
+
+	fmt.Println(etherheader)
+	fmt.Println(udppacket)
+
+	fmt.Println(rndis)
+
 }
+
 func sendSPL() bool {
 
 	dev, err := ctx.OpenDeviceWithVIDPID(romvid, rompid)
@@ -59,13 +75,6 @@ func sendSPL() bool {
 	check(err)
 	intf, err := config.Interface(1, 0)
 	check(err)
-	/*
-		intf, done, err := dev.DefaultInterface()
-		if err != nil {
-			log.Fatalf("%s.DefaultInterface(): %v", dev, err)
-		}
-		defer done()
-	*/
 
 	iep, err := intf.InEndpoint(1)
 	check(err)
