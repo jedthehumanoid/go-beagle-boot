@@ -52,11 +52,3 @@ func TestByteSliceBothNil(t *testing.T) {
 		t.Error("Expected true")
 	}
 }
-
-func TestToHexString(t *testing.T) {
-	ret := toHexString([]byte{0, 1, 77, 144, 255})
-
-	if ret != "00 01 4d 90 ff " {
-		t.Error("wrong string, got", ret)
-	}
-}

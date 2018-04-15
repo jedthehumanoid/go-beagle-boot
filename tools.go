@@ -1,22 +1,9 @@
 package main
 
-import "fmt"
-
 func check(err error) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func toHexString(data []byte) string {
-
-	ret := ""
-
-	for _, char := range data {
-		s := fmt.Sprintf("%02x ", char)
-		ret = ret + s
-	}
-	return ret
 }
 
 func byteSliceEquals(a, b []byte) bool {
