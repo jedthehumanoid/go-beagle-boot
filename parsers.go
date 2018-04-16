@@ -8,27 +8,6 @@ import (
 	"math"
 )
 
-func calculateChecksum(bytes []byte) uint16 {
-	var sum uint32
-
-	for i := range bytes {
-		if i%2 != 0 {
-			continue
-		}
-		a := uint16(bytes[i])
-		b := uint16(bytes[i+1])
-		sum += uint32(b + (a << 8))
-	}
-
-	for sum > 0xffff {
-		carry := sum >> 16
-		sum = sum & 0xffff
-		sum += carry
-	}
-	sum = ^sum
-	return uint16(sum)
-}
-
 func identifyRequest(buf []byte, length int) string {
 	switch int(buf[4]) {
 	case 0xc2, 0x6c:
@@ -102,19 +81,17 @@ func processARP(data []byte) []byte {
 	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
 	check(err)
 
-	arp := makeARPMessage(2, serverHwaddr, request.Arp.TargetProtocolAddr, request.Arp.SenderHardwareAddr, request.Arp.SenderProtocolAddr)
+	arp := makeARPMessage(2, serverHwaddr, request.Arp.TargetProtocolAddr,
+		request.Arp.SenderHardwareAddr, request.Arp.SenderProtocolAddr)
 	rndisResp := makeRndis(etherSize + arpSize)
 	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x806}
 
 	buf := new(bytes.Buffer)
 	err = binary.Write(buf, binary.LittleEndian, rndisResp)
 	check(err)
-
-	packets := struct {
-		etherHeader
-		arpMessage
-	}{etherResp, arp}
-	err = binary.Write(buf, binary.BigEndian, packets)
+	err = binary.Write(buf, binary.BigEndian, etherResp)
+	check(err)
+	err = binary.Write(buf, binary.BigEndian, arp)
 	check(err)
 
 	return buf.Bytes()

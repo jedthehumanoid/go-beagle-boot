@@ -5,6 +5,27 @@ import (
 	"encoding/binary"
 )
 
+func calculateChecksum(bytes []byte) uint16 {
+	var sum uint32
+
+	for i := range bytes {
+		if i%2 != 0 {
+			continue
+		}
+		a := uint16(bytes[i])
+		b := uint16(bytes[i+1])
+		sum += uint32(b + (a << 8))
+	}
+
+	for sum > 0xffff {
+		carry := sum >> 16
+		sum = sum & 0xffff
+		sum += carry
+	}
+	sum = ^sum
+	return uint16(sum)
+}
+
 type ipv4Datagram struct {
 	VersionHL    uint8
 	Tos          uint8
