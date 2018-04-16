@@ -147,7 +147,84 @@ func processTFTP(data []byte) []byte {
 	ip := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+tftpSize+512, 0, ipUDP)
 	udpResp := udpHeader{request.Udp.Dest, request.Udp.Source, tftpSize + 512 + 8, 0}
 	tftp := tftpData{3, 1}
+	filedata := dat[:512]
 
-	fmt.Println(rndis, etherResp, ip, udpResp, tftp)
-	return []byte("")
+	buf := new(bytes.Buffer)
+	err = binary.Write(buf, binary.LittleEndian, rndis)
+	check(err)
+
+	err = binary.Write(buf, binary.BigEndian, etherResp)
+	check(err)
+	err = binary.Write(buf, binary.BigEndian, ip)
+	check(err)
+	err = binary.Write(buf, binary.BigEndian, udpResp)
+	check(err)
+	err = binary.Write(buf, binary.BigEndian, tftp)
+	check(err)
+	err = binary.Write(buf, binary.BigEndian, filedata)
+	check(err)
+
+	//	fmt.Println(rndis, etherResp, ip, udpResp, tftp)
+	return buf.Bytes()
+}
+
+func processTFTPData(data []byte) []byte {
+	var request struct {
+		Rndis rndisMessage
+		Ether etherHeader
+		Ipv4  ipv4Datagram
+		Udp   udpHeader
+		Tftp  tftpData
+	}
+
+	inbuf := bytes.NewReader(data)
+	err := binary.Read(inbuf, binary.BigEndian, &request)
+	check(err)
+
+	// Replace rndis separately because little endian
+	inbuf = bytes.NewReader(data)
+	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
+	check(err)
+
+	dat, err := ioutil.ReadFile("spl")
+	check(err)
+	blocks := uint64(math.Ceil(float64(len(dat)) / 512.0))
+
+	bn := uint64(request.Tftp.BlockNumber + 1)
+	fmt.Println(request.Tftp.BlockNumber, blocks)
+	blocksize := 512
+	if bn == blocks {
+		blocksize = len(dat[(bn-1)*512:])
+	}
+	if request.Tftp.BlockNumber == uint16(blocks) {
+		return []byte("")
+	}
+
+	rndis := makeRndis(etherSize + ipSize + udpSize + tftpSize + uint32(blocksize))
+	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x800}
+	ip := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+tftpSize+uint16(blocksize), 0, ipUDP)
+	udpResp := udpHeader{request.Udp.Dest, request.Udp.Source, tftpSize + uint16(blocksize) + 8, 0}
+	tftp := tftpData{3, request.Tftp.BlockNumber + 1}
+
+	start := (bn - 1) * 512
+
+	filedata := dat[start : start+uint64(blocksize)]
+
+	buf := new(bytes.Buffer)
+	err = binary.Write(buf, binary.LittleEndian, rndis)
+	check(err)
+
+	err = binary.Write(buf, binary.BigEndian, etherResp)
+	check(err)
+	err = binary.Write(buf, binary.BigEndian, ip)
+	check(err)
+	err = binary.Write(buf, binary.BigEndian, udpResp)
+	check(err)
+	err = binary.Write(buf, binary.BigEndian, tftp)
+	check(err)
+	err = binary.Write(buf, binary.BigEndian, filedata)
+	check(err)
+
+	//	fmt.Println(rndis, etherResp, ip, udpResp, tftp)
+	return buf.Bytes()
 }
