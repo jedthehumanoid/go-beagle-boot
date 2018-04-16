@@ -1,41 +1,46 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
-func TestParseEtherHeader(t *testing.T) {
-
-	resp := parseEtherHeader([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14})
-
-	if !byteSliceEquals(resp.Dest[:], []byte{1, 2, 3, 4, 5, 6}) {
-		t.Error("Expected {1,2,3,4,5,6}")
-	}
-	if !byteSliceEquals(resp.Source[:], []byte{7, 8, 9, 10, 11, 12}) {
-		t.Error("Expected {7,8,9,10,11,12}")
-	}
-
-	if resp.Proto != 3342 {
-		t.Error("Got ", resp.Proto)
-	}
-}
-
-func testParseUdpPacket(t *testing.T) {
-
-	resp := parseUdpPacket([]byte{1, 2, 3, 4, 5, 6, 7, 8})
-
-	fmt.Println(resp)
-
-}
-
 func TestMakeIpv4Packet(t *testing.T) {
 	p := makeIpv4Packet([4]byte{1, 2, 3, 4}, [4]byte{5, 6, 7, 8}, 20, 30, 40)
-	fmt.Printf("%+v", p)
-	if p.VerHl != 69 || p.TotalLength != 20 || p.ID != 30 || p.ChkSum != 27281 ||
+	//	fmt.Printf("%+v\n", p)
+	if p.VersionHL != 69 || p.TotalLength != 20 || p.ID != 30 || p.ChkSum != 27281 ||
 		p.SourceAddr[0] != 1 || p.DestAddr[0] != 5 {
 		t.Error()
 	}
+
+}
+
+func TestMakeBootpPacket(t *testing.T) {
+	p := makeBootpPacket("test", 1, [6]byte{1, 2, 3, 4, 5, 6}, [4]byte{1, 2, 3, 4},
+		[4]byte{1, 2, 3, 4}, "testfile")
+	//	fmt.Printf("%+v\n", p)
+
+	if p.Opcode != 2 {
+		t.Error("Wrong opcode, ", p.Opcode)
+	} else if p.YourIPAddr[0] != 1 {
+		t.Error("Wrong ip address")
+	}
+
+	// TODO more checks
+}
+
+func TestMakeARPMessage(t *testing.T) {
+	p := makeARPMessage(1, [6]byte{1, 2, 3, 4, 5, 6}, [4]byte{1, 2, 3, 4},
+		[6]byte{7, 8, 9, 10, 11, 12}, [4]byte{5, 6, 7, 8})
+
+	// fmt.Printf("%+v\n", p)
+
+	if p.HardwareType != 1 {
+		t.Error("Wrong hardwaretype, ", p.HardwareType)
+	} else if p.ProtocolType != 2048 {
+		t.Error("Wrong protocol type", p.ProtocolType)
+	}
+
+	// TODO Moar tests
 
 }
 

@@ -25,6 +25,13 @@ func TestCheckWithErr(t *testing.T) {
 	check(errors.New("error"))
 }
 
+func TestByteSlice(t *testing.T) {
+
+	if !byteSliceEquals([]byte{1, 2, 3}, []byte{1, 2, 3}) {
+		t.Error("Expected true")
+	}
+}
+
 func TestByteSliceWrong(t *testing.T) {
 
 	if byteSliceEquals([]byte{7, 2, 3, 4, 5, 6}, []byte{1, 2, 3, 4, 5, 6}) {

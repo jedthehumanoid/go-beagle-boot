@@ -4,45 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
+	"math"
 )
-
-func parseEtherHeader(data []byte) etherHeader {
-	var etherheader etherHeader
-	buf := bytes.NewReader(data[:])
-	err := binary.Read(buf, binary.BigEndian, &etherheader)
-	check(err)
-
-	return etherheader
-}
-
-func parseUdpPacket(data []byte) udpPacket {
-	var ret udpPacket
-	buf := bytes.NewReader(data[:])
-	err := binary.Read(buf, binary.BigEndian, &ret)
-	check(err)
-
-	return ret
-}
-
-func parseBootpPacket(data []byte) bootpPacket {
-	var ret bootpPacket
-	buf := bytes.NewReader(data[:])
-	err := binary.Read(buf, binary.BigEndian, &ret)
-	check(err)
-
-	return ret
-}
-
-func makeRndis(length uint32) rndisPacket {
-	var rndis rndisPacket
-
-	rndis.MsgType = 1
-	rndis.MsgLength = length + 44
-	rndis.DataOffset = 0x24
-	rndis.DataLength = length
-
-	return rndis
-}
 
 func calculateChecksum(bytes []byte) uint16 {
 	var sum uint32
@@ -65,51 +29,6 @@ func calculateChecksum(bytes []byte) uint16 {
 	return uint16(sum)
 }
 
-func makeIpv4Packet(sourceAddr [4]byte, destAddr [4]byte, length uint16, id uint16, protocol uint8) ipv4Packet {
-	var ret ipv4Packet
-
-	ret.VerHl = 69
-	ret.TotalLength = length
-	ret.ID = id
-	ret.TTL = 64
-	ret.Protocol = protocol
-	ret.SourceAddr = sourceAddr
-	ret.DestAddr = destAddr
-
-	// Checksum calculation
-
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.BigEndian, ret)
-	check(err)
-
-	fmt.Printf("%+v", ret)
-
-	ret.ChkSum = calculateChecksum(buf.Bytes())
-
-	return ret
-}
-
-func makeBootpPacket(servername string, id uint32, source [16]byte, dest [4]byte, server [4]byte, bootfile string) bootpPacket {
-	var ret bootpPacket
-	ret.Opcode = 2
-	ret.Hw = 1
-	ret.HwLength = 6
-
-	ret.Hwaddr = source
-	ret.Xid = id
-	ret.Yiaddr = dest
-	ret.ServerIP = server
-	ret.BootpGWIp = server
-
-	ret.Vendor = [64]byte{99, 130, 83, 99, 1, 4, 255, 255, 255, 0, 3, 4, 192, 168, 1, 9, 0xFF}
-
-	copy(ret.ServerName[:], servername)
-	copy(ret.BootFile[:], bootfile)
-
-	return ret
-
-}
-
 func identifyRequest(buf []byte, length int) string {
 	switch int(buf[4]) {
 	case 0xc2, 0x6c:
@@ -123,4 +42,112 @@ func identifyRequest(buf []byte, length int) string {
 	default:
 		return "notIdentified"
 	}
+}
+
+func processBOOTP(data []byte) []byte {
+	var request struct {
+		Rndis rndisMessage
+		Ether etherHeader
+		Ipv4  ipv4Datagram
+		Udp   udpHeader
+		Bootp bootpMessage
+	}
+
+	inbuf := bytes.NewReader(data)
+	err := binary.Read(inbuf, binary.BigEndian, &request)
+	check(err)
+
+	// Replace rndis separately because little endian
+	inbuf = bytes.NewReader(data)
+	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
+	check(err)
+
+	rndisResp := makeRndis(fullSize - rndisSize)
+	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x800}
+	ipResp := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+bootpSize, 0, ipUDP)
+	udpResp := udpHeader{request.Udp.Dest, request.Udp.Source, bootpSize + 8, 0}
+
+	bootpResp := makeBootpPacket("BEAGLEBOOT", request.Bootp.Xid,
+		request.Ether.Source, bbIP, serverIP, filename)
+
+	buf := new(bytes.Buffer)
+	err = binary.Write(buf, binary.LittleEndian, rndisResp)
+	check(err)
+
+	packets := struct {
+		etherHeader
+		ipv4Datagram
+		udpHeader
+		bootpMessage
+	}{etherResp, ipResp, udpResp, bootpResp}
+	err = binary.Write(buf, binary.BigEndian, packets)
+	check(err)
+
+	return buf.Bytes()
+}
+
+func processARP(data []byte) []byte {
+	var request struct {
+		Rndis rndisMessage
+		Ether etherHeader
+		Arp   arpMessage
+	}
+
+	inbuf := bytes.NewReader(data)
+	err := binary.Read(inbuf, binary.BigEndian, &request)
+	check(err)
+
+	// Replace rndis separately because little endian
+	inbuf = bytes.NewReader(data)
+	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
+	check(err)
+
+	arp := makeARPMessage(2, serverHwaddr, request.Arp.TargetProtocolAddr, request.Arp.SenderHardwareAddr, request.Arp.SenderProtocolAddr)
+	rndisResp := makeRndis(etherSize + arpSize)
+	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x806}
+
+	buf := new(bytes.Buffer)
+	err = binary.Write(buf, binary.LittleEndian, rndisResp)
+	check(err)
+
+	packets := struct {
+		etherHeader
+		arpMessage
+	}{etherResp, arp}
+	err = binary.Write(buf, binary.BigEndian, packets)
+	check(err)
+
+	return buf.Bytes()
+}
+
+func processTFTP(data []byte) []byte {
+	var request struct {
+		Rndis rndisMessage
+		Ether etherHeader
+		Ipv4  ipv4Datagram
+		Udp   udpHeader
+	}
+
+	inbuf := bytes.NewReader(data)
+	err := binary.Read(inbuf, binary.BigEndian, &request)
+	check(err)
+
+	// Replace rndis separately because little endian
+	inbuf = bytes.NewReader(data)
+	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
+	check(err)
+
+	dat, err := ioutil.ReadFile("spl")
+	check(err)
+	blocks := math.Ceil(float64(len(dat)) / 512.0)
+	fmt.Println("Blocks, ", blocks)
+
+	rndis := makeRndis(etherSize + ipSize + udpSize + tftpSize + 512)
+	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x800}
+	ip := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+tftpSize+512, 0, ipUDP)
+	udpResp := udpHeader{request.Udp.Dest, request.Udp.Source, tftpSize + 512 + 8, 0}
+	tftp := tftpData{3, 1}
+
+	fmt.Println(rndis, etherResp, ip, udpResp, tftp)
+	return []byte("")
 }
