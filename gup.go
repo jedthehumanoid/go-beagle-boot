@@ -76,20 +76,26 @@ func sendSPL() bool {
 		request := identifyRequest(in, len(filename))
 
 		fmt.Println(request)
-
+		var data []byte
 		if request == "BOOTP" {
-			data := processBOOTP(in)
-			sendUSB(oep, data)
+			data = processBOOTP(in)
 		} else if request == "ARP" {
-			data := processARP(in)
-			sendUSB(oep, data)
+			data = processARP(in)
 		} else if request == "TFTP" {
-			data := processTFTP(in)
-			fmt.Println(data)
+			data = processTFTP(in)
+		} else if request == "TFTP_Data" {
+			data = processTFTPData(in)
+			if string(data) == "" {
+				return true
+			}
 		}
+		if string(data) != "" {
+
+			sendUSB(oep, data)
+		}
+		//time.Sleep(time.Millisecond * 10)
 	}
 
-	return true
 }
 
 func main() {
@@ -99,5 +105,7 @@ func main() {
 	for sendSPL() == false {
 		time.Sleep(time.Second)
 	}
+
+	fmt.Println("I can haz uboot")
 
 }
