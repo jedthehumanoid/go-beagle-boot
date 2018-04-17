@@ -36,6 +36,9 @@ func processBOOTP(data []byte) []byte {
 	err := binary.Read(inbuf, binary.BigEndian, &request)
 	check(err)
 
+	fmt.Println("----------")
+	fmt.Println(request.Ipv4.ID, request.Ipv4.ID+1024)
+
 	// Replace rndis separately because little endian
 	inbuf = bytes.NewReader(data)
 	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
@@ -63,6 +66,58 @@ func processBOOTP(data []byte) []byte {
 	check(err)
 
 	return buf.Bytes()
+}
+
+func processBOOTP2(data []byte) []byte {
+	var request struct {
+		Rndis rndisMessage
+		Ether etherHeader
+		Ipv4  ipv4Datagram
+		Udp   udpHeader
+		Bootp specialbootpMessage
+	}
+
+	inbuf := bytes.NewReader(data)
+	err := binary.Read(inbuf, binary.BigEndian, &request)
+	check(err)
+
+	// Replace rndis separately because little endian
+	inbuf = bytes.NewReader(data)
+	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
+	check(err)
+
+	fmt.Printf("rndis: %+v\n", request.Rndis)
+	fmt.Printf("ether: %+v\n", request.Ether)
+	fmt.Printf("ipv4: %+v\n", request.Ipv4)
+	fmt.Printf("udp: %+v\n", request.Udp)
+	fmt.Printf("bootp: %+v\n", request.Bootp)
+
+	fmt.Printf("-%d- % x", len(data[86:]), data[86:])
+
+	rndisResp := makeRndis(fullSize - rndisSize)
+	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x800}
+	ipResp := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+bootpSize, 0, ipUDP)
+	udpResp := udpHeader{request.Udp.Dest, request.Udp.Source, bootpSize + 8, 0}
+
+	bootpResp := makeBootpPacket("BEAGLEBOOT", request.Bootp.Xid,
+		request.Ether.Source, bbIP, serverIP, filename)
+
+	buf := new(bytes.Buffer)
+	err = binary.Write(buf, binary.LittleEndian, rndisResp)
+	check(err)
+
+	packets := struct {
+		etherHeader
+		ipv4Datagram
+		udpHeader
+		bootpMessage
+	}{etherResp, ipResp, udpResp, bootpResp}
+	err = binary.Write(buf, binary.BigEndian, packets)
+	check(err)
+
+	return buf.Bytes()
+
+	return []byte("")
 }
 
 func processARP(data []byte) []byte {
@@ -114,7 +169,7 @@ func processTFTP(data []byte) []byte {
 	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
 	check(err)
 
-	dat, err := ioutil.ReadFile("spl")
+	dat, err := ioutil.ReadFile(filename)
 	check(err)
 	blocks := math.Ceil(float64(len(dat)) / 512.0)
 	fmt.Println("Blocks, ", blocks)
@@ -163,7 +218,7 @@ func processTFTPData(data []byte) []byte {
 	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
 	check(err)
 
-	dat, err := ioutil.ReadFile("spl")
+	dat, err := ioutil.ReadFile(filename)
 	check(err)
 	blocks := uint64(math.Ceil(float64(len(dat)) / 512.0))
 

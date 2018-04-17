@@ -18,6 +18,23 @@ type bootpMessage struct {
 	VendorSpecific     [64]byte
 }
 
+type specialbootpMessage struct {
+	Opcode             uint8
+	HardwareType       uint8
+	HardwareAddrLength uint8
+	Hops               uint8
+	Xid                uint32
+	Seconds            uint16
+	Flags              uint16
+	ClientIPAddr       [4]byte
+	YourIPAddr         [4]byte
+	ServerIPAddr       [4]byte
+	GatewayIPAddr      [4]byte
+	ClientHardwareAddr [16]byte
+	ServerName         [64]byte
+	BootFilename       [128]byte
+}
+
 func makeBootpPacket(servername string, id uint32, clientHwAddr [6]byte, yourIp [4]byte, serverIp [4]byte, bootfile string) bootpMessage {
 	var ret bootpMessage
 	ret.Opcode = 2
