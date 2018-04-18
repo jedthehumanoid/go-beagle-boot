@@ -110,7 +110,7 @@ func sendSPL() bool {
 		if request == "BOOTP" {
 			data = processBOOTP(in)
 		} else if request == "ARP" {
-			data = []byte("")
+			//	data = []byte("")
 			data = processARP(in)
 		} else if request == "TFTP" {
 			data = processTFTP(in)
@@ -163,7 +163,7 @@ func findSPL() bool {
 		fmt.Println(request)
 		var data []byte
 		if request == "BOOTP" {
-			data = processBOOTP2(in)
+			data = processBOOTP(in)
 		} else if request == "ARP" {
 			data = processARP(in)
 		} else if request == "TFTP" {

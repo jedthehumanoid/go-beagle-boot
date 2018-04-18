@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io/ioutil"
 	"math"
 )
@@ -24,184 +23,99 @@ func identifyRequest(buf []byte, length int) string {
 }
 
 func processBOOTP(data []byte) []byte {
-	var request struct {
+	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
 		Ipv4  ipv4Datagram
 		Udp   udpHeader
-		Bootp bootpMessage
+		Bootp incompleteBootpMessage
 	}
 
 	inbuf := bytes.NewReader(data)
-	err := binary.Read(inbuf, binary.BigEndian, &request)
-	check(err)
-
-	fmt.Println("----------")
-	fmt.Println(request.Ipv4.ID, request.Ipv4.ID+1024)
-
-	// Replace rndis separately because little endian
-	inbuf = bytes.NewReader(data)
-	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
-	check(err)
+	binRead(inbuf, binary.BigEndian, &req)
+	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
+	binRead(inbuf, binary.LittleEndian, &req.Rndis)
 
 	rndisResp := makeRndis(fullSize - rndisSize)
-	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x800}
+	etherResp := etherHeader{req.Ether.Source, serverHwaddr, 0x800}
 	ipResp := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+bootpSize, 0, ipUDP)
-	udpResp := udpHeader{request.Udp.Dest, request.Udp.Source, bootpSize + 8, 0}
-
-	bootpResp := makeBootpPacket("BEAGLEBOOT", request.Bootp.Xid,
-		request.Ether.Source, bbIP, serverIP, filename)
+	udpResp := makeUdpHeader(req.Udp.Dest, req.Udp.Source, bootpSize)
+	bootpResp := makeBootpPacket("BEAGLEBOOT", req.Bootp.Xid,
+		req.Ether.Source, bbIP, serverIP, filename)
 
 	buf := new(bytes.Buffer)
-	err = binary.Write(buf, binary.LittleEndian, rndisResp)
-	check(err)
-
-	packets := struct {
-		etherHeader
-		ipv4Datagram
-		udpHeader
-		bootpMessage
-	}{etherResp, ipResp, udpResp, bootpResp}
-	err = binary.Write(buf, binary.BigEndian, packets)
-	check(err)
+	binWrite(buf, binary.LittleEndian, rndisResp)
+	binWrite(buf, binary.BigEndian, etherResp)
+	binWrite(buf, binary.BigEndian, ipResp)
+	binWrite(buf, binary.BigEndian, udpResp)
+	binWrite(buf, binary.BigEndian, bootpResp)
 
 	return buf.Bytes()
-}
-
-func processBOOTP2(data []byte) []byte {
-	var request struct {
-		Rndis rndisMessage
-		Ether etherHeader
-		Ipv4  ipv4Datagram
-		Udp   udpHeader
-		Bootp specialbootpMessage
-	}
-
-	inbuf := bytes.NewReader(data)
-	err := binary.Read(inbuf, binary.BigEndian, &request)
-	check(err)
-
-	// Replace rndis separately because little endian
-	inbuf = bytes.NewReader(data)
-	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
-	check(err)
-
-	fmt.Printf("rndis: %+v\n", request.Rndis)
-	fmt.Printf("ether: %+v\n", request.Ether)
-	fmt.Printf("ipv4: %+v\n", request.Ipv4)
-	fmt.Printf("udp: %+v\n", request.Udp)
-	fmt.Printf("bootp: %+v\n", request.Bootp)
-
-	fmt.Printf("-%d- % x", len(data[86:]), data[86:])
-
-	rndisResp := makeRndis(fullSize - rndisSize)
-	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x800}
-	ipResp := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+bootpSize, 0, ipUDP)
-	udpResp := udpHeader{request.Udp.Dest, request.Udp.Source, bootpSize + 8, 0}
-
-	bootpResp := makeBootpPacket("BEAGLEBOOT", request.Bootp.Xid,
-		request.Ether.Source, bbIP, serverIP, filename)
-
-	buf := new(bytes.Buffer)
-	err = binary.Write(buf, binary.LittleEndian, rndisResp)
-	check(err)
-
-	packets := struct {
-		etherHeader
-		ipv4Datagram
-		udpHeader
-		bootpMessage
-	}{etherResp, ipResp, udpResp, bootpResp}
-	err = binary.Write(buf, binary.BigEndian, packets)
-	check(err)
-
-	return buf.Bytes()
-
-	return []byte("")
 }
 
 func processARP(data []byte) []byte {
-	var request struct {
+	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
 		Arp   arpMessage
 	}
 
 	inbuf := bytes.NewReader(data)
-	err := binary.Read(inbuf, binary.BigEndian, &request)
-	check(err)
+	binRead(inbuf, binary.BigEndian, &req)
+	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
+	binRead(inbuf, binary.LittleEndian, &req.Rndis)
 
-	// Replace rndis separately because little endian
-	inbuf = bytes.NewReader(data)
-	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
-	check(err)
-
-	arp := makeARPMessage(2, serverHwaddr, request.Arp.TargetProtocolAddr,
-		request.Arp.SenderHardwareAddr, request.Arp.SenderProtocolAddr)
+	arp := makeARPMessage(2, serverHwaddr, req.Arp.TargetProtocolAddr,
+		req.Arp.SenderHardwareAddr, req.Arp.SenderProtocolAddr)
 	rndisResp := makeRndis(etherSize + arpSize)
-	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x806}
+	etherResp := etherHeader{req.Ether.Source, serverHwaddr, 0x806}
 
 	buf := new(bytes.Buffer)
-	err = binary.Write(buf, binary.LittleEndian, rndisResp)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, etherResp)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, arp)
-	check(err)
+	binWrite(buf, binary.LittleEndian, rndisResp)
+	binWrite(buf, binary.BigEndian, etherResp)
+	binWrite(buf, binary.BigEndian, arp)
 
 	return buf.Bytes()
 }
 
 func processTFTP(data []byte) []byte {
-	var request struct {
+	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
 		Ipv4  ipv4Datagram
 		Udp   udpHeader
 	}
 
-	inbuf := bytes.NewReader(data)
-	err := binary.Read(inbuf, binary.BigEndian, &request)
-	check(err)
+	var blocksize uint16 = 512
 
-	// Replace rndis separately because little endian
-	inbuf = bytes.NewReader(data)
-	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
-	check(err)
+	inbuf := bytes.NewReader(data)
+	binRead(inbuf, binary.BigEndian, &req)
+	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
+	binRead(inbuf, binary.LittleEndian, &req.Rndis)
 
 	dat, err := ioutil.ReadFile(filename)
 	check(err)
-	blocks := math.Ceil(float64(len(dat)) / 512.0)
-	fmt.Println("Blocks, ", blocks)
 
-	rndis := makeRndis(etherSize + ipSize + udpSize + tftpSize + 512)
-	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x800}
-	ip := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+tftpSize+512, 0, ipUDP)
-	udpResp := udpHeader{request.Udp.Dest, request.Udp.Source, tftpSize + 512 + 8, 0}
+	rndis := makeRndis(etherSize + ipSize + udpSize + tftpSize + uint32(blocksize))
+	etherResp := etherHeader{req.Ether.Source, serverHwaddr, 0x800}
+	ip := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+tftpSize+blocksize, 0, ipUDP)
+	udpResp := makeUdpHeader(req.Udp.Dest, req.Udp.Source, tftpSize+blocksize)
 	tftp := tftpData{3, 1}
-	filedata := dat[:512]
+	filedata := dat[:blocksize]
 
 	buf := new(bytes.Buffer)
-	err = binary.Write(buf, binary.LittleEndian, rndis)
-	check(err)
+	binWrite(buf, binary.LittleEndian, rndis)
+	binWrite(buf, binary.BigEndian, etherResp)
+	binWrite(buf, binary.BigEndian, ip)
+	binWrite(buf, binary.BigEndian, udpResp)
+	binWrite(buf, binary.BigEndian, tftp)
+	binWrite(buf, binary.BigEndian, filedata)
 
-	err = binary.Write(buf, binary.BigEndian, etherResp)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, ip)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, udpResp)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, tftp)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, filedata)
-	check(err)
-
-	//	fmt.Println(rndis, etherResp, ip, udpResp, tftp)
 	return buf.Bytes()
 }
 
 func processTFTPData(data []byte) []byte {
-	var request struct {
+	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
 		Ipv4  ipv4Datagram
@@ -209,54 +123,41 @@ func processTFTPData(data []byte) []byte {
 		Tftp  tftpData
 	}
 
-	inbuf := bytes.NewReader(data)
-	err := binary.Read(inbuf, binary.BigEndian, &request)
-	check(err)
+	var blocksize uint16 = 512
 
-	// Replace rndis separately because little endian
-	inbuf = bytes.NewReader(data)
-	err = binary.Read(inbuf, binary.LittleEndian, &request.Rndis)
-	check(err)
+	inbuf := bytes.NewReader(data)
+	binRead(inbuf, binary.BigEndian, &req)
+	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
+	binRead(inbuf, binary.LittleEndian, &req.Rndis)
 
 	dat, err := ioutil.ReadFile(filename)
 	check(err)
-	blocks := uint64(math.Ceil(float64(len(dat)) / 512.0))
+	blocks := uint16(math.Ceil(float64(len(dat)) / float64(blocksize)))
 
-	bn := uint64(request.Tftp.BlockNumber + 1)
-	fmt.Println(request.Tftp.BlockNumber, blocks)
-	blocksize := 512
-	if bn == blocks {
-		blocksize = len(dat[(bn-1)*512:])
-	}
-	if request.Tftp.BlockNumber == uint16(blocks) {
+	bn := req.Tftp.BlockNumber + 1
+	if bn == blocks { // Last block
+		blocksize = uint16(len(dat[(bn-1)*blocksize:]))
+	} else if bn == blocks+1 { //Finished
 		return []byte("")
 	}
 
 	rndis := makeRndis(etherSize + ipSize + udpSize + tftpSize + uint32(blocksize))
-	etherResp := etherHeader{request.Ether.Source, serverHwaddr, 0x800}
-	ip := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+tftpSize+uint16(blocksize), 0, ipUDP)
-	udpResp := udpHeader{request.Udp.Dest, request.Udp.Source, tftpSize + uint16(blocksize) + 8, 0}
-	tftp := tftpData{3, request.Tftp.BlockNumber + 1}
+	etherResp := etherHeader{req.Ether.Source, serverHwaddr, 0x800}
+	ip := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+tftpSize+blocksize, 0, ipUDP)
+	udpResp := makeUdpHeader(req.Udp.Dest, req.Udp.Source, tftpSize+blocksize)
+	tftp := tftpData{3, bn}
 
-	start := (bn - 1) * 512
+	start := (uint64(bn) - 1) * uint64(512)
 
 	filedata := dat[start : start+uint64(blocksize)]
 
 	buf := new(bytes.Buffer)
-	err = binary.Write(buf, binary.LittleEndian, rndis)
-	check(err)
+	binWrite(buf, binary.LittleEndian, rndis)
+	binWrite(buf, binary.BigEndian, etherResp)
+	binWrite(buf, binary.BigEndian, ip)
+	binWrite(buf, binary.BigEndian, udpResp)
+	binWrite(buf, binary.BigEndian, tftp)
+	binWrite(buf, binary.BigEndian, filedata)
 
-	err = binary.Write(buf, binary.BigEndian, etherResp)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, ip)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, udpResp)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, tftp)
-	check(err)
-	err = binary.Write(buf, binary.BigEndian, filedata)
-	check(err)
-
-	//	fmt.Println(rndis, etherResp, ip, udpResp, tftp)
 	return buf.Bytes()
 }

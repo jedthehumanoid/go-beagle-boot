@@ -1,5 +1,10 @@
 package main
 
+import (
+	"encoding/binary"
+	"io"
+)
+
 func check(err error) {
 	if err != nil {
 		panic(err)
@@ -41,4 +46,14 @@ func difference(a, b []string) []string {
 		}
 	}
 	return ab
+}
+
+func binWrite(w io.Writer, order binary.ByteOrder, data interface{}) {
+	err := binary.Write(w, order, data)
+	check(err)
+}
+
+func binRead(r io.Reader, order binary.ByteOrder, data interface{}) {
+	err := binary.Read(r, order, data)
+	check(err)
 }

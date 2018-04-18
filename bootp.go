@@ -18,7 +18,7 @@ type bootpMessage struct {
 	VendorSpecific     [64]byte
 }
 
-type specialbootpMessage struct {
+type incompleteBootpMessage struct {
 	Opcode             uint8
 	HardwareType       uint8
 	HardwareAddrLength uint8
@@ -31,8 +31,6 @@ type specialbootpMessage struct {
 	ServerIPAddr       [4]byte
 	GatewayIPAddr      [4]byte
 	ClientHardwareAddr [16]byte
-	ServerName         [64]byte
-	BootFilename       [128]byte
 }
 
 func makeBootpPacket(servername string, id uint32, clientHwAddr [6]byte, yourIp [4]byte, serverIp [4]byte, bootfile string) bootpMessage {
