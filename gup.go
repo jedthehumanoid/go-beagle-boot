@@ -30,8 +30,6 @@ var bbIP = [4]byte{192, 168, 1, 3}
 
 const maxbuf = 450
 
-var filename = "spl"
-
 var ctx *gousb.Context
 
 func sendSPL() bool {
@@ -92,27 +90,24 @@ func findSPL() bool {
 	return true
 }
 
-func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, fn string) {
-	filename = fn
+func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
 	for {
 		in := readUSB(in)
-
 		request := identifyRequest(in, len(filename))
-
-		// fmt.Println(request)
 		var data []byte
+
 		if request == "BOOTP" {
 			fmt.Print("bootp")
-			data = processBOOTP(in)
+			data = processBOOTP(in, filename)
 		} else if request == "ARP" {
 			fmt.Print(", arp")
 			data = processARP(in)
 		} else if request == "TFTP" {
 			fmt.Println(", tftp\n")
-			data = processTFTP(in)
+			data = processTFTP(in, filename)
 		} else if request == "TFTP_Data" {
 			fmt.Print(".")
-			data = processTFTPData(in)
+			data = processTFTPData(in, filename)
 			if string(data) == "" {
 				fmt.Print("\n")
 				return

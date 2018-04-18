@@ -25,7 +25,7 @@ func onAttach(ctx *gousb.Context) string {
 			return attached[0]
 		}
 		oldDevices = newDevices
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 200)
 	}
 }
 

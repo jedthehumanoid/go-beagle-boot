@@ -22,7 +22,7 @@ func identifyRequest(buf []byte, length int) string {
 	}
 }
 
-func processBOOTP(data []byte) []byte {
+func processBOOTP(data []byte, filename string) []byte {
 	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
@@ -78,7 +78,7 @@ func processARP(data []byte) []byte {
 	return buf.Bytes()
 }
 
-func processTFTP(data []byte) []byte {
+func processTFTP(data []byte, filename string) []byte {
 	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
@@ -114,7 +114,7 @@ func processTFTP(data []byte) []byte {
 	return buf.Bytes()
 }
 
-func processTFTPData(data []byte) []byte {
+func processTFTPData(data []byte, filename string) []byte {
 	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
