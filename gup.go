@@ -61,7 +61,7 @@ func sendSPL() bool {
 	return true
 }
 
-func findSPL() bool {
+func sendUBOOT() bool {
 
 	dev, err := ctx.OpenDeviceWithVIDPID(splvid, splpid)
 	if dev == nil {
@@ -92,7 +92,11 @@ func findSPL() bool {
 
 func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
 	for {
-		in := readUSB(in)
+		in, err := readUSB(in)
+		if err != nil {
+			return
+		}
+
 		request := identifyRequest(in, len(filename))
 		var data []byte
 
@@ -114,7 +118,6 @@ func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
 			}
 		}
 		if string(data) != "" {
-
 			sendUSB(out, data)
 		}
 	}
@@ -123,20 +126,17 @@ func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
 func main() {
 	ctx = gousb.NewContext()
 	defer ctx.Close()
-
 	fmt.Println("Connect Beaglebone")
 
-	for onAttach(ctx) != "0451 6141" {
+	for true {
+		device := onAttach(ctx)
+		if device == "0451 6141" {
+			fmt.Println("Found Beaglebone in ROM mode, sending SPL")
+			sendSPL()
+		} else if device == "0525 a4a2" {
+			fmt.Println("Found Beaglebone in SPL mode, sending UBOOT")
+			sendUBOOT()
+			fmt.Println("\nDone!")
+		}
 	}
-	fmt.Println("Found Beaglebone in ROM mode, sending SPL")
-
-	sendSPL()
-
-	for onAttach(ctx) != "0525 a4a2" {
-	}
-	fmt.Println("Found Beaglebone in SPL mode, sending UBOOT")
-
-	findSPL()
-	fmt.Println("Done!")
-
 }

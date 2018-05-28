@@ -29,16 +29,18 @@ func onAttach(ctx *gousb.Context) string {
 	}
 }
 
-func readUSB(ep *gousb.InEndpoint) []byte {
+func readUSB(ep *gousb.InEndpoint) ([]byte, error) {
 
 	buf := make([]byte, 10*ep.Desc.MaxPacketSize)
 	bytesread, err := ep.Read(buf)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 	buf2 := buf[:bytesread]
 	if debug {
 		fmt.Printf("Receiving: --%d-- % x\n", len(buf2), buf2)
 	}
-	return buf2
+	return buf2, nil
 }
 
 func sendUSB(ep *gousb.OutEndpoint, data []byte) {
