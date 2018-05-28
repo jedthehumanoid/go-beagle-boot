@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/google/gousb"
+	"runtime"
 )
 
 const romvid gousb.ID = 0x0451
@@ -47,6 +47,9 @@ func sendSPL() bool {
 	check(err)
 	defer config.Close()
 
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		initRNDIS(dev)
+	}
 	intf, err := config.Interface(1, 0)
 	check(err)
 	defer intf.Close()
@@ -91,6 +94,7 @@ func sendUBOOT() bool {
 }
 
 func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
+	fmt.Println("transfer")
 	for {
 		in, err := readUSB(in)
 		if err != nil {
@@ -121,6 +125,13 @@ func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
 			sendUSB(out, data)
 		}
 	}
+}
+
+func initRNDIS(dev *gousb.Device) {
+	fmt.Println("initRNDIS")
+
+	_, err := dev.Control(0x21, 0, 0, 0, []byte(""))
+check(err)
 }
 
 func main() {
