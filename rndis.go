@@ -14,6 +14,15 @@ type rndisMessage struct {
 	ReservedSecond   uint32
 }
 
+type controlRndisInit struct {
+	MsgType         uint32
+	MsgLength       uint32
+	RequestID       uint32
+	MajorVersion    uint32
+	MinorVersion    uint32
+	MaxTransferSize uint32
+}
+
 func makeRndis(length uint32) rndisMessage {
 	var rndis rndisMessage
 

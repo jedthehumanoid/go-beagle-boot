@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
-	"github.com/google/gousb"
 	"runtime"
+
+	"github.com/google/gousb"
 )
 
 const romvid gousb.ID = 0x0451
@@ -21,6 +24,7 @@ const udpSize = 8
 const bootpSize = 300
 const tftpSize = 4
 const fullSize = 386
+const initrndis = true
 
 var debug = false
 
@@ -47,7 +51,7 @@ func sendSPL() bool {
 	check(err)
 	defer config.Close()
 
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+	if initrndis == true || runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		initRNDIS(dev)
 	}
 	intf, err := config.Interface(1, 0)
@@ -130,8 +134,21 @@ func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
 func initRNDIS(dev *gousb.Device) {
 	fmt.Println("initRNDIS")
 
-	_, err := dev.Control(0x21, 0, 0, 0, []byte(""))
-check(err)
+	rndis := controlRndisInit{2, 24, 1, 1, 1, 64}
+
+	buf := new(bytes.Buffer)
+	binWrite(buf, binary.LittleEndian, rndis)
+
+	fmt.Println(dev.Desc.MaxControlPacketSize)
+
+	sendBuf := buf.Bytes()
+	sendBuf = append(sendBuf, make([]byte, 1025-len(buf.Bytes()))...)
+
+	var ctype uint8 = gousb.ControlOut | gousb.ControlClass | gousb.ControlInterface
+
+	i, err := dev.Control(ctype, 0, 0, 0, make([]byte, 1))
+	check(err)
+	fmt.Println(i)
 }
 
 func main() {
