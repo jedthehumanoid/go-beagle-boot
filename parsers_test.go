@@ -62,26 +62,27 @@ func TestMakeRndis(t *testing.T) {
 }
 
 func TestIdentifyRequest(t *testing.T) {
-	if identifyRequest([]byte{0, 0, 0, 0, 0xC2}, 0) != "BOOTP" {
-		t.Error("Expected BOOTP")
+	var tt = []struct {
+		id     byte
+		length int
+		result string
+	}{
+		{0xC2, 0, "BOOTP"},
+		{0x6C, 0, "BOOTP"},
+		{0x56, 0, "ARP"},
+		{0x60, 1, "TFTP"},
+		{0x77, 1, "TFTP"},
+		{0x5a, 0, "TFTP_Data"},
+		{0x00, 0, "notIdentified"},
 	}
-	if identifyRequest([]byte{0, 0, 0, 0, 0x6C}, 0) != "BOOTP" {
-		t.Error("Expected BOOTP")
-	}
-	if identifyRequest([]byte{0, 0, 0, 0, 0x56}, 0) != "ARP" {
-		t.Error("Expected ARP")
-	}
-	if identifyRequest([]byte{0, 0, 0, 0, 0x60}, 1) != "TFTP" {
-		t.Error("Expected TFTP")
-	}
-	if identifyRequest([]byte{0, 0, 0, 0, 0x77}, 1) != "TFTP" {
-		t.Error("Expected TFTP")
-	}
-	if identifyRequest([]byte{0, 0, 0, 0, 0x5a}, 0) != "TFTP_Data" {
-		t.Error("Expected TFTP")
-	}
-	if identifyRequest([]byte{0, 0, 0, 0, 0}, 0) != "notIdentified" {
-		t.Error("Expected notIdentified")
+
+	for _, test := range tt {
+		t.Run(test.result, func(t *testing.T) {
+			result := identifyRequest([]byte{0, 0, 0, 0, test.id}, test.length)
+			if result != test.result {
+				t.Errorf("Unexpected result, expected %s, got %s", test.result, result)
+			}
+		})
 	}
 }
 
