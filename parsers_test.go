@@ -85,6 +85,19 @@ func TestIdentifyRequest(t *testing.T) {
 	}
 }
 
+func TestMakeUdpHeader(t *testing.T) {
+	udp := makeUdpHeader(1, 2, 3)
+	if udp.Source != 1 {
+		t.Error("Wrong source")
+	}
+	if udp.Dest != 2 {
+		t.Error("Wrong dest")
+	}
+	if udp.Length != 3+8 {
+		t.Error("Wrong length")
+	}
+}
+
 func TestCalculateCheksum(t *testing.T) {
 	sum := calculateChecksum([]byte{0x45, 0x00, 0x00, 0x73, 0x00, 0x00, 0x40, 0x00,
 		0x40, 0x11, 0x00, 0x00, 0xc0, 0xa8, 0x00, 0x01, 0xc0, 0xa8, 0x00, 0xc7})
