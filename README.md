@@ -11,7 +11,7 @@ BeagleBone Green
 
 ## Tested platfoms
 
-Linux, Windows (with libusb-compatible driver)
+Linux, Windows (with libusb-compatible driver)  
 Should work on MacOS(Darwin) as well
 
 
