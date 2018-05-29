@@ -59,3 +59,13 @@ func TestByteSliceBothNil(t *testing.T) {
 		t.Error("Expected true")
 	}
 }
+
+func TestDifference(t *testing.T) {
+	a := []string{"cat", "dog"}
+	b := []string{"cat", "dog", "mouse"}
+
+	mouse := difference(b, a)
+	if len(mouse) != 1 && mouse[0] != "mouse" {
+		t.Error("Expected [\"mouse\"]")
+	}
+}
