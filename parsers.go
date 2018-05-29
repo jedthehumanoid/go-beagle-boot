@@ -131,7 +131,7 @@ func processTFTPData(data []byte, filename string) []byte {
 	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
 	binRead(inbuf, binary.LittleEndian, &req.Rndis)
 
-	dat, err := ioutil.ReadFile(filename)
+	dat, err := ioutil.ReadFile("bin" + string(os.PathSeparator) + filename)
 	check(err)
 	blocks := uint16(math.Ceil(float64(len(dat)) / float64(blocksize)))
 
