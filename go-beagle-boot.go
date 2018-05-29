@@ -98,7 +98,6 @@ func sendUBOOT() bool {
 }
 
 func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
-	fmt.Println("transfer")
 	for {
 		in, err := readUSB(in)
 		if err != nil {
@@ -135,47 +134,39 @@ func initRNDIS(dev *gousb.Device) {
 	var rtsend uint8 = gousb.ControlOut | gousb.ControlClass | gousb.ControlInterface
 	var rtreceive uint8 = gousb.ControlIn | gousb.ControlClass | gousb.ControlInterface
 
-	fmt.Println("initRNDIS")
-	/*
-		config, err := dev.Config(0)
-		check(err)
-		defer config.Close()
-	*/
+	fmt.Println("Initiating RNDIS...")
+
 	rndis := controlRndisInit{2, 24, 1, 1, 1, 64}
 
 	buf := new(bytes.Buffer)
 	binWrite(buf, binary.LittleEndian, rndis)
 
-	fmt.Printf("%d '% x'\n\n", len(buf.Bytes()), buf.Bytes())
-
-	i, err := dev.Control(rtsend, 0, 0, 0, buf.Bytes())
+	_, err := dev.Control(rtsend, 0, 0, 0, buf.Bytes())
 	check(err)
-	fmt.Println(i)
 
 	rec := make([]byte, 1025)
 
-	i, err = dev.Control(rtreceive, 0x01, 0, 0, rec)
+	i, err := dev.Control(rtreceive, 0x01, 0, 0, rec)
+	check(err)
 	rec = rec[:i]
-	fmt.Printf("%d '% x'\n\n", len(rec), rec)
 
 	rndisset := controlRndisSet{5, 28, 23, 0x1010E, 4, 20, 0, 0x2d}
 	buf = new(bytes.Buffer)
 	binWrite(buf, binary.LittleEndian, rndisset)
-	fmt.Printf("%d '% x'\n\n", len(buf.Bytes()), buf.Bytes())
 
-	i, err = dev.Control(rtsend, 0, 0, 0, buf.Bytes())
+	_, err = dev.Control(rtsend, 0, 0, 0, buf.Bytes())
 	check(err)
-	fmt.Println(i)
 
 	i, err = dev.Control(rtreceive, 0x01, 0, 0, rec)
+	check(err)
 	rec = rec[:i]
-	fmt.Printf("%d '% x'\n\n", len(rec), rec)
+
 }
 
 func main() {
 	ctx = gousb.NewContext()
 	defer ctx.Close()
-	fmt.Println("Connect Beaglebone")
+	fmt.Println("Connect Beaglebone (with boot-button pressed)")
 
 	for true {
 		device := onAttach(ctx)
