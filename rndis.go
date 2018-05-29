@@ -23,6 +23,17 @@ type controlRndisInit struct {
 	MaxTransferSize uint32
 }
 
+type controlRndisSet struct {
+	MsgType   uint32
+	MsgLength uint32
+	RequestID uint32
+	OID       uint32
+	Length    uint32
+	Offset    uint32
+	Reserved  uint32
+	OIDp      uint32
+}
+
 func makeRndis(length uint32) rndisMessage {
 	var rndis rndisMessage
 

@@ -132,23 +132,44 @@ func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
 }
 
 func initRNDIS(dev *gousb.Device) {
-	fmt.Println("initRNDIS")
+	var rtsend uint8 = gousb.ControlOut | gousb.ControlClass | gousb.ControlInterface
+	var rtreceive uint8 = gousb.ControlIn | gousb.ControlClass | gousb.ControlInterface
 
+	fmt.Println("initRNDIS")
+	/*
+		config, err := dev.Config(0)
+		check(err)
+		defer config.Close()
+	*/
 	rndis := controlRndisInit{2, 24, 1, 1, 1, 64}
 
 	buf := new(bytes.Buffer)
 	binWrite(buf, binary.LittleEndian, rndis)
 
-	fmt.Println(dev.Desc.MaxControlPacketSize)
+	fmt.Printf("%d '% x'\n\n", len(buf.Bytes()), buf.Bytes())
 
-	sendBuf := buf.Bytes()
-	sendBuf = append(sendBuf, make([]byte, 1025-len(buf.Bytes()))...)
-
-	var ctype uint8 = gousb.ControlOut | gousb.ControlClass | gousb.ControlInterface
-
-	i, err := dev.Control(ctype, 0, 0, 0, make([]byte, 1))
+	i, err := dev.Control(rtsend, 0, 0, 0, buf.Bytes())
 	check(err)
 	fmt.Println(i)
+
+	rec := make([]byte, 1025)
+
+	i, err = dev.Control(rtreceive, 0x01, 0, 0, rec)
+	rec = rec[:i]
+	fmt.Printf("%d '% x'\n\n", len(rec), rec)
+
+	rndisset := controlRndisSet{5, 28, 23, 0x1010E, 4, 20, 0, 0x2d}
+	buf = new(bytes.Buffer)
+	binWrite(buf, binary.LittleEndian, rndisset)
+	fmt.Printf("%d '% x'\n\n", len(buf.Bytes()), buf.Bytes())
+
+	i, err = dev.Control(rtsend, 0, 0, 0, buf.Bytes())
+	check(err)
+	fmt.Println(i)
+
+	i, err = dev.Control(rtreceive, 0x01, 0, 0, rec)
+	rec = rec[:i]
+	fmt.Printf("%d '% x'\n\n", len(rec), rec)
 }
 
 func main() {
