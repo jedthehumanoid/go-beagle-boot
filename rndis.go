@@ -14,7 +14,7 @@ type rndisMessage struct {
 	ReservedSecond   uint32
 }
 
-type controlRndisInit struct {
+type rndisInitMsg struct {
 	MsgType         uint32
 	MsgLength       uint32
 	RequestID       uint32
@@ -23,7 +23,7 @@ type controlRndisInit struct {
 	MaxTransferSize uint32
 }
 
-type controlRndisSet struct {
+type rndisSetMsg struct {
 	MsgType   uint32
 	MsgLength uint32
 	RequestID uint32

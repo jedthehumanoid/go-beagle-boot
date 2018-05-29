@@ -136,7 +136,7 @@ func initRNDIS(dev *gousb.Device) {
 
 	fmt.Println("Initiating RNDIS...")
 
-	rndis := controlRndisInit{2, 24, 1, 1, 1, 64}
+	rndis := rndisInitMsg{2, 24, 1, 1, 1, 64}
 
 	buf := new(bytes.Buffer)
 	binWrite(buf, binary.LittleEndian, rndis)
@@ -150,7 +150,7 @@ func initRNDIS(dev *gousb.Device) {
 	check(err)
 	rec = rec[:i]
 
-	rndisset := controlRndisSet{5, 28, 23, 0x1010E, 4, 20, 0, 0x2d}
+	rndisset := rndisSetMsg{5, 28, 23, 0x1010E, 4, 20, 0, 0x2d}
 	buf = new(bytes.Buffer)
 	binWrite(buf, binary.LittleEndian, rndisset)
 
