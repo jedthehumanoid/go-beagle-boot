@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"io/ioutil"
 	"math"
+	"os"
 )
 
 func identifyRequest(buf []byte, length int) string {
@@ -93,7 +94,7 @@ func processTFTP(data []byte, filename string) []byte {
 	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
 	binRead(inbuf, binary.LittleEndian, &req.Rndis)
 
-	dat, err := ioutil.ReadFile(filename)
+	dat, err := ioutil.ReadFile("bin" + string(os.PathSeparator) + filename)
 	check(err)
 
 	rndis := makeRndis(etherSize + ipSize + udpSize + tftpSize + uint32(blocksize))
