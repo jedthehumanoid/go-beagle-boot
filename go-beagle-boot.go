@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"os"
+	"os/exec"
 	"runtime"
+	"syscall"
+	"time"
 
 	"github.com/google/gousb"
 )
@@ -163,6 +167,44 @@ func initRNDIS(dev *gousb.Device) {
 
 }
 
+func export() {
+	modprobe, err := exec.LookPath("modprobe")
+	if err != nil {
+		panic(err)
+	}
+
+	args := []string{"g_mass_storage", "file=/dev/sdb"}
+
+	err = syscall.Exec(modprobe, args, os.Environ())
+	if err != nil {
+		panic(err)
+	}
+}
+
+func unexport() {
+	modprobe, err := exec.LookPath("rmmod")
+	if err != nil {
+		panic(err)
+	}
+
+	args := []string{"g_mass_storage"}
+
+	err = syscall.Exec(modprobe, args, os.Environ())
+	if err != nil {
+		panic(err)
+	}
+}
+
+func waitforMassStorage() {
+	for {
+		_, err := os.Stat("/dev/sda")
+		if err == nil {
+			return
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+}
+
 func main() {
 	ctx = gousb.NewContext()
 	defer ctx.Close()
@@ -171,12 +213,19 @@ func main() {
 	for true {
 		device := onAttach(ctx)
 		if device == "0451 6141" {
+			unexport()
 			fmt.Println("Found Beaglebone in ROM mode, sending SPL")
 			sendSPL()
 		} else if device == "0525 a4a2" {
 			fmt.Println("Found Beaglebone in SPL mode, sending UBOOT")
 			sendUBOOT()
 			fmt.Println("\nDone!")
+		} else if device == "0451 d022" {
+			fmt.Println("found mass storage")
+			waitforMassStorage()
+			export()
+			ctx.Close()
+			os.Exit(0)
 		}
 	}
 }
