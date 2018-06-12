@@ -224,6 +224,7 @@ func main() {
 			sendSPL()
 		} else if device == "0525 a4a2" {
 			fmt.Println("Found Beaglebone in SPL mode, sending UBOOT")
+			time.Sleep(time.Second)
 			sendUBOOT()
 			fmt.Println("\nDone!")
 		} else if device == "0451 d022" {
