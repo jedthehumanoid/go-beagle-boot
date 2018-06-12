@@ -40,6 +40,8 @@ const maxbuf = 450
 
 var ctx *gousb.Context
 
+var binPath string
+
 func sendSPL() bool {
 
 	dev, err := ctx.OpenDeviceWithVIDPID(romvid, rompid)
@@ -205,7 +207,7 @@ func waitforMassStorage() {
 func main() {
 
 	exportEnabled := flag.Bool("export", false, "Export as mass storage")
-
+	flag.StringVar(&binPath, "bin", "bin", "Path to binary images")
 	flag.Parse()
 
 	ctx = gousb.NewContext()
