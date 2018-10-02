@@ -177,7 +177,7 @@ func export() {
 		panic(err)
 	}
 
-	args := []string{"g_mass_storage", "file=/dev/sda"}
+	args := []string{"g_mass_storage", "file=/dev/sda", "removable=y"}
 
 	err = exec.Command(modprobe, args...).Run()
 	if err != nil {
