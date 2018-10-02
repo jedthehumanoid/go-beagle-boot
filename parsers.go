@@ -23,7 +23,7 @@ func identifyRequest(buf []byte, length int) string {
 	}
 }
 
-func processBOOTP(data []byte, filename string) []byte {
+func processBOOTP(data []byte, filename string) ([]byte, error) {
 	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
@@ -33,9 +33,15 @@ func processBOOTP(data []byte, filename string) []byte {
 	}
 
 	inbuf := bytes.NewReader(data)
-	binRead(inbuf, binary.BigEndian, &req)
+	err := binary.Read(inbuf, binary.BigEndian, &req)
+	if err != nil {
+		return []byte{}, err
+	}
 	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
-	binRead(inbuf, binary.LittleEndian, &req.Rndis)
+	err = binary.Read(inbuf, binary.LittleEndian, &req.Rndis)
+	if err != nil {
+		return []byte{}, err
+	}
 
 	rndisResp := makeRndis(fullSize - rndisSize)
 	etherResp := etherHeader{req.Ether.Source, serverHwaddr, 0x800}
@@ -45,16 +51,22 @@ func processBOOTP(data []byte, filename string) []byte {
 		req.Ether.Source, bbIP, serverIP, filename)
 
 	buf := new(bytes.Buffer)
-	binWrite(buf, binary.LittleEndian, rndisResp)
-	binWrite(buf, binary.BigEndian, etherResp)
-	binWrite(buf, binary.BigEndian, ipResp)
-	binWrite(buf, binary.BigEndian, udpResp)
-	binWrite(buf, binary.BigEndian, bootpResp)
-
-	return buf.Bytes()
+	err = binary.Write(buf, binary.LittleEndian, rndisResp)
+	if err != nil {
+		return []byte{}, err
+	}
+	err = binary.Write(buf, binary.BigEndian, []interface{}{
+		etherResp,
+		ipResp,
+		udpResp,
+		bootpResp})
+	if err != nil {
+		return []byte{}, err
+	}
+	return buf.Bytes(), nil
 }
 
-func processARP(data []byte) []byte {
+func processARP(data []byte) ([]byte, error) {
 	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
@@ -62,9 +74,16 @@ func processARP(data []byte) []byte {
 	}
 
 	inbuf := bytes.NewReader(data)
-	binRead(inbuf, binary.BigEndian, &req)
+	err := binary.Read(inbuf, binary.BigEndian, &req)
+	if err != nil {
+		return []byte{}, err
+	}
+
 	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
-	binRead(inbuf, binary.LittleEndian, &req.Rndis)
+	err = binary.Read(inbuf, binary.LittleEndian, &req.Rndis)
+	if err != nil {
+		return []byte{}, err
+	}
 
 	arp := makeARPMessage(2, serverHwaddr, req.Arp.TargetProtocolAddr,
 		req.Arp.SenderHardwareAddr, req.Arp.SenderProtocolAddr)
@@ -72,14 +91,22 @@ func processARP(data []byte) []byte {
 	etherResp := etherHeader{req.Ether.Source, serverHwaddr, 0x806}
 
 	buf := new(bytes.Buffer)
-	binWrite(buf, binary.LittleEndian, rndisResp)
-	binWrite(buf, binary.BigEndian, etherResp)
-	binWrite(buf, binary.BigEndian, arp)
+	err = binary.Write(buf, binary.LittleEndian, rndisResp)
+	if err != nil {
+		return []byte{}, err
+	}
 
-	return buf.Bytes()
+	err = binary.Write(buf, binary.BigEndian, []interface{}{
+		etherResp,
+		arp})
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return buf.Bytes(), nil
 }
 
-func processTFTP(data []byte, filename string) []byte {
+func processTFTP(data []byte, filename string) ([]byte, error) {
 	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
@@ -90,9 +117,16 @@ func processTFTP(data []byte, filename string) []byte {
 	var blocksize uint16 = 512
 
 	inbuf := bytes.NewReader(data)
-	binRead(inbuf, binary.BigEndian, &req)
+	err := binary.Read(inbuf, binary.BigEndian, &req)
+	if err != nil {
+		return []byte{}, err
+	}
+
 	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
-	binRead(inbuf, binary.LittleEndian, &req.Rndis)
+	err = binary.Read(inbuf, binary.LittleEndian, &req.Rndis)
+	if err != nil {
+		return []byte{}, err
+	}
 
 	dat, err := ioutil.ReadFile(binPath + string(os.PathSeparator) + filename)
 	check(err)
@@ -105,17 +139,25 @@ func processTFTP(data []byte, filename string) []byte {
 	filedata := dat[:blocksize]
 
 	buf := new(bytes.Buffer)
-	binWrite(buf, binary.LittleEndian, rndis)
-	binWrite(buf, binary.BigEndian, etherResp)
-	binWrite(buf, binary.BigEndian, ip)
-	binWrite(buf, binary.BigEndian, udpResp)
-	binWrite(buf, binary.BigEndian, tftp)
-	binWrite(buf, binary.BigEndian, filedata)
+	err = binary.Write(buf, binary.LittleEndian, rndis)
+	if err != nil {
+		return []byte{}, err
+	}
 
-	return buf.Bytes()
+	err = binary.Write(buf, binary.BigEndian, []interface{}{
+		etherResp,
+		ip,
+		udpResp,
+		tftp,
+		filedata})
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return buf.Bytes(), nil
 }
 
-func processTFTPData(data []byte, filename string) []byte {
+func processTFTPData(data []byte, filename string) ([]byte, error) {
 	var req struct {
 		Rndis rndisMessage
 		Ether etherHeader
@@ -127,9 +169,16 @@ func processTFTPData(data []byte, filename string) []byte {
 	var blocksize uint16 = 512
 
 	inbuf := bytes.NewReader(data)
-	binRead(inbuf, binary.BigEndian, &req)
+	err := binary.Read(inbuf, binary.BigEndian, &req)
+	if err != nil {
+		return []byte{}, err
+	}
+
 	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
-	binRead(inbuf, binary.LittleEndian, &req.Rndis)
+	err = binary.Read(inbuf, binary.LittleEndian, &req.Rndis)
+	if err != nil {
+		return []byte{}, err
+	}
 
 	dat, err := ioutil.ReadFile(binPath + string(os.PathSeparator) + filename)
 	check(err)
@@ -139,7 +188,7 @@ func processTFTPData(data []byte, filename string) []byte {
 	if bn == blocks { // Last block
 		blocksize = uint16(len(dat[(bn-1)*blocksize:]))
 	} else if bn == blocks+1 { //Finished
-		return []byte("")
+		return []byte{}, nil
 	}
 
 	rndis := makeRndis(etherSize + ipSize + udpSize + tftpSize + uint32(blocksize))
@@ -153,12 +202,20 @@ func processTFTPData(data []byte, filename string) []byte {
 	filedata := dat[start : start+uint64(blocksize)]
 
 	buf := new(bytes.Buffer)
-	binWrite(buf, binary.LittleEndian, rndis)
-	binWrite(buf, binary.BigEndian, etherResp)
-	binWrite(buf, binary.BigEndian, ip)
-	binWrite(buf, binary.BigEndian, udpResp)
-	binWrite(buf, binary.BigEndian, tftp)
-	binWrite(buf, binary.BigEndian, filedata)
+	err = binary.Write(buf, binary.LittleEndian, rndis)
+	if err != nil {
+		return []byte{}, err
+	}
 
-	return buf.Bytes()
+	err = binary.Write(buf, binary.BigEndian, []interface{}{
+		etherResp,
+		ip,
+		udpResp,
+		tftp,
+		filedata})
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return buf.Bytes(), nil
 }

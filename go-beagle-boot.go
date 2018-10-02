@@ -115,16 +115,16 @@ func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
 
 		if request == "BOOTP" {
 			fmt.Print("bootp")
-			data = processBOOTP(in, filename)
+			data, _ = processBOOTP(in, filename)
 		} else if request == "ARP" {
 			fmt.Print(", arp")
-			data = processARP(in)
+			data, _ = processARP(in)
 		} else if request == "TFTP" {
-			fmt.Println(", tftp\n")
-			data = processTFTP(in, filename)
+			fmt.Print(", tftp\n\n")
+			data, _ = processTFTP(in, filename)
 		} else if request == "TFTP_Data" {
 			fmt.Print(".")
-			data = processTFTPData(in, filename)
+			data, _ = processTFTPData(in, filename)
 			if string(data) == "" {
 				fmt.Print("\n")
 				return
@@ -145,9 +145,10 @@ func initRNDIS(dev *gousb.Device) {
 	rndis := rndisInitMsg{2, 24, 1, 1, 1, 64}
 
 	buf := new(bytes.Buffer)
-	binWrite(buf, binary.LittleEndian, rndis)
+	err := binary.Write(buf, binary.LittleEndian, rndis)
+	check(err)
 
-	_, err := dev.Control(rtsend, 0, 0, 0, buf.Bytes())
+	_, err = dev.Control(rtsend, 0, 0, 0, buf.Bytes())
 	check(err)
 
 	rec := make([]byte, 1025)
@@ -158,7 +159,8 @@ func initRNDIS(dev *gousb.Device) {
 
 	rndisset := rndisSetMsg{5, 28, 23, 0x1010E, 4, 20, 0, 0x2d}
 	buf = new(bytes.Buffer)
-	binWrite(buf, binary.LittleEndian, rndisset)
+	err = binary.Write(buf, binary.LittleEndian, rndisset)
+	check(err)
 
 	_, err = dev.Control(rtsend, 0, 0, 0, buf.Bytes())
 	check(err)
@@ -166,7 +168,6 @@ func initRNDIS(dev *gousb.Device) {
 	i, err = dev.Control(rtreceive, 0x01, 0, 0, rec)
 	check(err)
 	rec = rec[:i]
-
 }
 
 func export() {
