@@ -23,9 +23,12 @@ func onAttach(ctx *gousb.Context) ([]string, error) {
 	}
 	for {
 		newDevices, err := listDevices()
+		if err != nil {
+			return []string{}, err
+		}
 		attached := difference(newDevices, oldDevices)
 		if len(attached) > 0 {
-			return attached, err
+			return attached, nil
 		}
 		oldDevices = newDevices
 		time.Sleep(time.Millisecond * 200)
