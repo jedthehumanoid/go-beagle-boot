@@ -13,11 +13,9 @@ import (
 	"github.com/google/gousb"
 )
 
-const romvid gousb.ID = 0x0451
-const rompid gousb.ID = 0x6141
-
-const splvid gousb.ID = 0x525
-const splpid gousb.ID = 0xa4a2
+const ROMID = "0451 6141"
+const SPLID = "0525 a4a2"
+const UMSID = "0451 d022"
 
 const ipUDP = 17
 const rndisSize = 44
@@ -220,18 +218,18 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		if contains(device, "0451 6141") {
+		if contains(device, ROMID) {
 			if *exportEnabled {
 				unexport()
 			}
 			fmt.Println("Found Beaglebone in ROM mode, sending SPL")
 			sendSPL()
-		} else if contains(device, "0525 a4a2") {
+		} else if contains(device, SPLID) {
 			fmt.Println("Found Beaglebone in SPL mode, sending UBOOT")
 			time.Sleep(time.Second)
 			sendUBOOT()
 			fmt.Println("\nDone!")
-		} else if contains(device, "0451 d022") {
+		} else if contains(device, UMSID) {
 			fmt.Println("found mass storage")
 			waitforMassStorage()
 
