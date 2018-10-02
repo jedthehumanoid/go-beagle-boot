@@ -28,7 +28,7 @@ const udpSize = 8
 const bootpSize = 300
 const tftpSize = 4
 const fullSize = 386
-const initrndis = true
+const initrndis = false
 
 var debug = false
 
