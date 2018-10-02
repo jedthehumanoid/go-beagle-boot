@@ -1,5 +1,10 @@
 package main
 
+import (
+	"encoding/binary"
+	"io"
+)
+
 func check(err error) {
 	if err != nil {
 		panic(err)
@@ -50,4 +55,15 @@ func contains(s []string, e string) bool {
 		}
 	}
 	return false
+}
+
+func writeMulti(w io.Writer, order binary.ByteOrder, data []interface{}) error {
+	var err error
+	for _, d := range data {
+		err = binary.Write(w, order, d)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

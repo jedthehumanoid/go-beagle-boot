@@ -55,7 +55,7 @@ func processBOOTP(data []byte, filename string) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-	err = binary.Write(buf, binary.BigEndian, []interface{}{
+	err = writeMulti(buf, binary.BigEndian, []interface{}{
 		etherResp,
 		ipResp,
 		udpResp,
@@ -96,7 +96,7 @@ func processARP(data []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	err = binary.Write(buf, binary.BigEndian, []interface{}{
+	err = writeMulti(buf, binary.BigEndian, []interface{}{
 		etherResp,
 		arp})
 	if err != nil {
@@ -144,7 +144,7 @@ func processTFTP(data []byte, filename string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	err = binary.Write(buf, binary.BigEndian, []interface{}{
+	err = writeMulti(buf, binary.BigEndian, []interface{}{
 		etherResp,
 		ip,
 		udpResp,
@@ -207,7 +207,7 @@ func processTFTPData(data []byte, filename string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	err = binary.Write(buf, binary.BigEndian, []interface{}{
+	err = writeMulti(buf, binary.BigEndian, []interface{}{
 		etherResp,
 		ip,
 		udpResp,
