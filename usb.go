@@ -7,22 +7,25 @@ import (
 	"github.com/google/gousb"
 )
 
-func listDevices() []string {
+func listDevices() ([]string, error) {
 	var ret []string
-	_, _ = ctx.OpenDevices(func(desc *gousb.DeviceDesc) bool {
+	_, err := ctx.OpenDevices(func(desc *gousb.DeviceDesc) bool {
 		ret = append(ret, fmt.Sprintf("%s %s", desc.Vendor, desc.Product))
 		return false
 	})
-	return ret
+	return ret, err
 }
 
-func onAttach(ctx *gousb.Context) string {
-	oldDevices := listDevices()
+func onAttach(ctx *gousb.Context) ([]string, error) {
+	oldDevices, err := listDevices()
+	if err != nil {
+		return []string{}, err
+	}
 	for {
-		newDevices := listDevices()
+		newDevices, err := listDevices()
 		attached := difference(newDevices, oldDevices)
 		if len(attached) > 0 {
-			return attached[0]
+			return attached, err
 		}
 		oldDevices = newDevices
 		time.Sleep(time.Millisecond * 200)

@@ -51,7 +51,8 @@ func sendSPL() bool {
 	check(err)
 	defer dev.Close()
 
-	dev.SetAutoDetach(true)
+	err = dev.SetAutoDetach(true)
+	check(err)
 
 	config, err := dev.Config(1)
 	check(err)
@@ -216,28 +217,28 @@ func main() {
 	fmt.Println("Connect Beaglebone (with boot-button pressed)")
 
 	for true {
-		device := onAttach(ctx)
-		if device == "0451 6141" {
+		device, err := onAttach(ctx)
+		if err != nil {
+			panic(err)
+		}
+		if contains(device, "0451 6141") {
 			if *exportEnabled {
 				unexport()
 			}
 			fmt.Println("Found Beaglebone in ROM mode, sending SPL")
 			sendSPL()
-		} else if device == "0525 a4a2" {
+		} else if contains(device, "0525 a4a2") {
 			fmt.Println("Found Beaglebone in SPL mode, sending UBOOT")
 			time.Sleep(time.Second)
 			sendUBOOT()
 			fmt.Println("\nDone!")
-		} else if device == "0451 d022" {
+		} else if contains(device, "0451 d022") {
 			fmt.Println("found mass storage")
 			waitforMassStorage()
 
 			if *exportEnabled {
 				export()
 			}
-
-			ctx.Close()
-			os.Exit(0)
 		}
 	}
 }
