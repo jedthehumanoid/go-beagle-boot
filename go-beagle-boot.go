@@ -28,7 +28,6 @@ const udpSize = 8
 const bootpSize = 300
 const tftpSize = 4
 const fullSize = 386
-const initrndis = false
 
 var debug = false
 
@@ -58,7 +57,7 @@ func sendSPL() bool {
 	check(err)
 	defer config.Close()
 
-	if initrndis == true || runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		initRNDIS(dev)
 	}
 	intf, err := config.Interface(1, 0)
