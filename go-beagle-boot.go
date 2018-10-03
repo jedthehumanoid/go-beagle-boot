@@ -95,25 +95,23 @@ func open(conf configuration, file string) error {
 		switch request {
 		case "BOOTP":
 			fmt.Println(request)
-			data, _ := processBOOTP(indata, file)
-			sendUSB(oep, data)
+			sendUSB(oep, processBOOTP(indata, file))
 		case "ARP":
 			fmt.Println(request)
-			data, _ := processARP(indata)
-			sendUSB(oep, data)
+			sendUSB(oep, processARP(indata))
 		case "TFTP":
 			fmt.Println(request)
-			data, _ := processTFTP(indata, file)
-			sendUSB(oep, data)
+			sendUSB(oep, processTFTP(indata, file))
 		case "TFTP_Data":
 			fmt.Print(".")
-			data, _ := processTFTPData(indata, file)
-			if string(data) == "" {
+			data := processTFTPData(indata, file)
+			if len(data) > 0 {
+				sendUSB(oep, data)
+			} else {
 				// Finished
 				fmt.Print("\n\n")
 				return nil
 			}
-			sendUSB(oep, data)
 		}
 	}
 }
