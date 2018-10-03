@@ -84,9 +84,8 @@ func read(c chan response, d time.Duration) ([]byte, error) {
 }
 
 func sendUSB(ep *gousb.OutEndpoint, data []byte) {
-	byteswritten, err := ep.Write(data)
+	_, err := ep.Write(data)
 	check(err)
-	if debug {
-		fmt.Printf("Sending: --%d/%d-- % x\n", byteswritten, len(data), data)
-	}
+	//fmt.Printf("Sending: --%d/%d-- % x\n", byteswritten, len(data), data)
+
 }
