@@ -61,8 +61,8 @@ func listen(ep *gousb.InEndpoint) chan response {
 			if err != nil {
 				c <- response{[]byte{}, err}
 			}
-			buf = buf[:bytesread]
-			c <- response{buf, nil}
+			ret := buf[:bytesread]
+			c <- response{ret, nil}
 		}
 	}()
 
