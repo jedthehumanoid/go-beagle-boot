@@ -17,6 +17,12 @@ const ROMID = "0451 6141"
 const SPLID = "0525 a4a2"
 const UMSID = "0451 d022"
 
+const romvid = 0x0451
+const rompid = 0x6141
+
+const splvid = 0x0525
+const splpid = 0xa4a2
+
 const ipUDP = 17
 const rndisSize = 44
 const etherSize = 14
@@ -67,6 +73,9 @@ func sendSPL() bool {
 
 	oep, err := intf.OutEndpoint(2)
 	check(err)
+
+	resp := listen(iep)
+	fmt.Println(readTimeout(resp, 1*time.Second))
 
 	transfer(iep, oep, "spl")
 	return true

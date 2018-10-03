@@ -27,7 +27,7 @@ func processBOOTP(data []byte, filename string) ([]byte, error) {
 	var req struct {
 		_     rndisMessage
 		Ether etherHeader
-		_     ipv4Datagram
+		Ipv4  ipv4Datagram
 		Udp   udpHeader
 		Bootp incompleteBootpMessage
 	}
