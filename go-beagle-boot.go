@@ -93,19 +93,20 @@ func open(conf configuration, file string) bool {
 		}
 		request := identifyRequest(indata, len(file))
 		var data []byte
-		if request == "BOOTP" {
+		switch request {
+		case "BOOTP":
 			fmt.Print("bootp")
 			data, _ = processBOOTP(indata, file)
 			sendUSB(oep, data)
-		} else if request == "ARP" {
+		case "ARP":
 			fmt.Print(", arp")
 			data, _ = processARP(indata)
 			sendUSB(oep, data)
-		} else if request == "TFTP" {
+		case "TFTP":
 			fmt.Print(", tftp\n\n")
 			data, _ = processTFTP(indata, file)
 			sendUSB(oep, data)
-		} else if request == "TFTP_Data" {
+		case "TFTP_Data":
 			fmt.Print(".")
 			data, _ = processTFTPData(indata, file)
 			sendUSB(oep, data)
