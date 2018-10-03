@@ -38,7 +38,7 @@ func processBOOTP(data []byte, filename string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	rndisResp := makeRndis(fullSize - rndisSize)
+	rndisResp := makeRndis(fullSize - rndisSize).bytes()
 	etherResp := etherHeader{req.Ether.Source, serverHwaddr, 0x800}
 	ipResp := makeIpv4Packet(serverIP, bbIP, ipSize+udpSize+bootpSize, 0, ipUDP)
 	udpResp := makeUdpHeader(req.Udp.Dest, req.Udp.Source, bootpSize)
@@ -46,11 +46,9 @@ func processBOOTP(data []byte, filename string) ([]byte, error) {
 		req.Ether.Source, bbIP, serverIP, filename)
 
 	buf := new(bytes.Buffer)
-	err = binary.Write(buf, binary.LittleEndian, rndisResp)
-	if err != nil {
-		return []byte{}, err
-	}
+
 	err = writeMulti(buf, binary.BigEndian, []interface{}{
+		rndisResp,
 		etherResp,
 		ipResp,
 		udpResp,

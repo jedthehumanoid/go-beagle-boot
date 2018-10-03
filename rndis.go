@@ -1,5 +1,10 @@
 package main
 
+import (
+	"bytes"
+	"encoding/binary"
+)
+
 type rndisMessage struct {
 	MsgType          uint32
 	MsgLength        uint32
@@ -43,4 +48,13 @@ func makeRndis(length uint32) rndisMessage {
 	rndis.DataLength = length
 
 	return rndis
+}
+
+func (msg rndisMessage) bytes() []byte {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, msg)
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
 }
