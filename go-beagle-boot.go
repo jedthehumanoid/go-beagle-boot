@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -52,16 +53,15 @@ type configuration struct {
 var ROMConf = configuration{0x0451, 0x6141, 1, 1, 0, 1, 2}
 var SPLConf = configuration{0x0525, 0xa4a2, 2, 1, 0, 1, 1}
 
-func open(conf configuration, file string) bool {
+func open(conf configuration, file string) error {
 	dev, err := ctx.OpenDeviceWithVIDPID(conf.vid, conf.pid)
-	if err == gousb.ErrorAccess {
-		fmt.Println("Access denied")
-		return false
+	if err != nil {
+		return err
 	}
 	if dev == nil {
-		return false
+		return errors.New("No device")
 	}
-	check(err)
+
 	defer dev.Close()
 
 	err = dev.SetAutoDetach(true)
@@ -89,7 +89,7 @@ func open(conf configuration, file string) bool {
 	for {
 		indata, err := read(inchan, 0)
 		if err != nil {
-			return false
+			return err
 		}
 		request := identifyRequest(indata, len(file))
 		var data []byte
@@ -109,14 +109,14 @@ func open(conf configuration, file string) bool {
 		case "TFTP_Data":
 			fmt.Print(".")
 			data, _ = processTFTPData(indata, file)
-			sendUSB(oep, data)
 			if string(data) == "" {
-				fmt.Print("\n")
-				return false
+				// Finished
+				fmt.Print("\n\n")
+				return nil
 			}
+			sendUSB(oep, data)
 		}
 	}
-	return true
 }
 
 func initRNDIS(dev *gousb.Device) {
@@ -198,7 +198,7 @@ func main() {
 	defer ctx.Close()
 	fmt.Println("Connect Beaglebone (with boot-button pressed)")
 
-	for true {
+	for {
 		device, err := onAttach(ctx)
 		if err != nil {
 			panic(err)
@@ -208,11 +208,16 @@ func main() {
 				unexport()
 			}
 			fmt.Println("Found Beaglebone in ROM mode, sending SPL")
-			open(ROMConf, "spl")
+			err := open(ROMConf, "spl")
+			if err != nil {
+				fmt.Println(err)
+			}
 		} else if contains(device, SPLID) {
 			fmt.Println("Found Beaglebone in SPL mode, sending UBOOT")
-			time.Sleep(time.Second)
-			open(SPLConf, "uboot")
+			err := open(SPLConf, "uboot")
+			if err != nil {
+				fmt.Println(err)
+			}
 			fmt.Println("\nDone!")
 		} else if contains(device, UMSID) {
 			fmt.Println("found mass storage")
