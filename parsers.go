@@ -25,7 +25,7 @@ func identifyRequest(buf []byte, length int) string {
 
 func processBOOTP(data []byte, filename string) ([]byte, error) {
 	var req struct {
-		Rndis rndisMessage
+		_     [rndisSize]byte
 		Ether etherHeader
 		Ipv4  ipv4Datagram
 		Udp   udpHeader
@@ -34,11 +34,6 @@ func processBOOTP(data []byte, filename string) ([]byte, error) {
 
 	inbuf := bytes.NewReader(data)
 	err := binary.Read(inbuf, binary.BigEndian, &req)
-	if err != nil {
-		return []byte{}, err
-	}
-	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
-	err = binary.Read(inbuf, binary.LittleEndian, &req.Rndis)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -68,19 +63,13 @@ func processBOOTP(data []byte, filename string) ([]byte, error) {
 
 func processARP(data []byte) ([]byte, error) {
 	var req struct {
-		Rndis rndisMessage
+		_     [rndisSize]byte
 		Ether etherHeader
 		Arp   arpMessage
 	}
 
 	inbuf := bytes.NewReader(data)
 	err := binary.Read(inbuf, binary.BigEndian, &req)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
-	err = binary.Read(inbuf, binary.LittleEndian, &req.Rndis)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -108,7 +97,7 @@ func processARP(data []byte) ([]byte, error) {
 
 func processTFTP(data []byte, filename string) ([]byte, error) {
 	var req struct {
-		Rndis rndisMessage
+		_     [rndisSize]byte
 		Ether etherHeader
 		Ipv4  ipv4Datagram
 		Udp   udpHeader
@@ -118,12 +107,6 @@ func processTFTP(data []byte, filename string) ([]byte, error) {
 
 	inbuf := bytes.NewReader(data)
 	err := binary.Read(inbuf, binary.BigEndian, &req)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
-	err = binary.Read(inbuf, binary.LittleEndian, &req.Rndis)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -159,7 +142,7 @@ func processTFTP(data []byte, filename string) ([]byte, error) {
 
 func processTFTPData(data []byte, filename string) ([]byte, error) {
 	var req struct {
-		Rndis rndisMessage
+		_     [rndisSize]byte
 		Ether etherHeader
 		Ipv4  ipv4Datagram
 		Udp   udpHeader
@@ -170,12 +153,6 @@ func processTFTPData(data []byte, filename string) ([]byte, error) {
 
 	inbuf := bytes.NewReader(data)
 	err := binary.Read(inbuf, binary.BigEndian, &req)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	inbuf = bytes.NewReader(data) // Reset and read rndis again, in little endian
-	err = binary.Read(inbuf, binary.LittleEndian, &req.Rndis)
 	if err != nil {
 		return []byte{}, err
 	}
