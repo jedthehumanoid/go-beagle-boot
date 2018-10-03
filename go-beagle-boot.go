@@ -92,23 +92,22 @@ func open(conf configuration, file string) error {
 			return err
 		}
 		request := identifyRequest(indata, len(file))
-		var data []byte
 		switch request {
 		case "BOOTP":
-			fmt.Print("bootp")
-			data, _ = processBOOTP(indata, file)
+			fmt.Println(request)
+			data, _ := processBOOTP(indata, file)
 			sendUSB(oep, data)
 		case "ARP":
-			fmt.Print(", arp")
-			data, _ = processARP(indata)
+			fmt.Println(request)
+			data, _ := processARP(indata)
 			sendUSB(oep, data)
 		case "TFTP":
-			fmt.Print(", tftp\n\n")
-			data, _ = processTFTP(indata, file)
+			fmt.Println(request)
+			data, _ := processTFTP(indata, file)
 			sendUSB(oep, data)
 		case "TFTP_Data":
 			fmt.Print(".")
-			data, _ = processTFTPData(indata, file)
+			data, _ := processTFTPData(indata, file)
 			if string(data) == "" {
 				// Finished
 				fmt.Print("\n\n")
