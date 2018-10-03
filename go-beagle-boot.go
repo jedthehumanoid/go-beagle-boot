@@ -17,12 +17,6 @@ const ROMID = "0451 6141"
 const SPLID = "0525 a4a2"
 const UMSID = "0451 d022"
 
-const romvid = 0x0451
-const rompid = 0x6141
-
-const splvid = 0x0525
-const splpid = 0xa4a2
-
 const ipUDP = 17
 const rndisSize = 44
 const etherSize = 14
@@ -45,9 +39,26 @@ var ctx *gousb.Context
 
 var binPath string
 
-func sendSPL() bool {
+type configuration struct {
+	vid    gousb.ID
+	pid    gousb.ID
+	config int
+	intf   int
+	alt    int
+	in     int
+	out    int
+}
 
-	dev, err := ctx.OpenDeviceWithVIDPID(romvid, rompid)
+var ROMConf = configuration{0x0451, 0x6141, 1, 1, 0, 1, 2}
+var SPLConf = configuration{0x0525, 0xa4a2, 2, 1, 0, 1, 1}
+
+func open(conf configuration, file string) bool {
+	fmt.Printf("open %+v\n, %s", conf, file)
+	dev, err := ctx.OpenDeviceWithVIDPID(conf.vid, conf.pid)
+	if err == gousb.ErrorAccess {
+		fmt.Println("Access denied")
+		return false
+	}
 	if dev == nil {
 		return false
 	}
@@ -57,90 +68,54 @@ func sendSPL() bool {
 	err = dev.SetAutoDetach(true)
 	check(err)
 
-	config, err := dev.Config(1)
+	config, err := dev.Config(conf.config)
 	check(err)
 	defer config.Close()
 
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+	if file == "spl" && (runtime.GOOS == "windows" || runtime.GOOS == "darwin") {
 		initRNDIS(dev)
 	}
-	intf, err := config.Interface(1, 0)
+	intf, err := config.Interface(conf.intf, conf.alt)
 	check(err)
 	defer intf.Close()
 
-	iep, err := intf.InEndpoint(1)
+	iep, err := intf.InEndpoint(conf.in)
 	check(err)
 
-	oep, err := intf.OutEndpoint(2)
+	oep, err := intf.OutEndpoint(conf.out)
 	check(err)
 
-	resp := listen(iep)
-	fmt.Println(readTimeout(resp, 1*time.Second))
+	inchan := listen(iep)
 
-	transfer(iep, oep, "spl")
-	return true
-}
-
-func sendUBOOT() bool {
-
-	dev, err := ctx.OpenDeviceWithVIDPID(splvid, splpid)
-	if dev == nil {
-		return false
-	}
-	check(err)
-	defer dev.Close()
-
-	dev.SetAutoDetach(true)
-
-	config, err := dev.Config(2)
-	check(err)
-	defer config.Close()
-
-	intf, err := config.Interface(1, 0)
-	check(err)
-	defer intf.Close()
-
-	iep, err := intf.InEndpoint(1)
-	check(err)
-
-	oep, err := intf.OutEndpoint(1)
-	check(err)
-
-	transfer(iep, oep, "uboot")
-	return true
-}
-
-func transfer(in *gousb.InEndpoint, out *gousb.OutEndpoint, filename string) {
 	for {
-		in, err := readUSB(in)
+		indata, err := read(inchan, 0)
 		if err != nil {
-			return
+			return false
 		}
-
-		request := identifyRequest(in, len(filename))
+		request := identifyRequest(indata, len(file))
 		var data []byte
-
 		if request == "BOOTP" {
 			fmt.Print("bootp")
-			data, _ = processBOOTP(in, filename)
+			data, _ = processBOOTP(indata, file)
 		} else if request == "ARP" {
 			fmt.Print(", arp")
-			data, _ = processARP(in)
+			data, _ = processARP(indata)
 		} else if request == "TFTP" {
 			fmt.Print(", tftp\n\n")
-			data, _ = processTFTP(in, filename)
+			data, _ = processTFTP(indata, file)
 		} else if request == "TFTP_Data" {
 			fmt.Print(".")
-			data, _ = processTFTPData(in, filename)
+			data, _ = processTFTPData(indata, file)
 			if string(data) == "" {
 				fmt.Print("\n")
-				return
+				return false
 			}
 		}
 		if string(data) != "" {
-			sendUSB(out, data)
+			sendUSB(oep, data)
 		}
 	}
+	return true
 }
 
 func initRNDIS(dev *gousb.Device) {
@@ -232,11 +207,11 @@ func main() {
 				unexport()
 			}
 			fmt.Println("Found Beaglebone in ROM mode, sending SPL")
-			sendSPL()
+			open(ROMConf, "spl")
 		} else if contains(device, SPLID) {
 			fmt.Println("Found Beaglebone in SPL mode, sending UBOOT")
 			time.Sleep(time.Second)
-			sendUBOOT()
+			open(SPLConf, "uboot")
 			fmt.Println("\nDone!")
 		} else if contains(device, UMSID) {
 			fmt.Println("found mass storage")

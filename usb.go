@@ -3,8 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/google/gousb"
 	"time"
+
+	"github.com/google/gousb"
 )
 
 func listDevices() ([]string, error) {
@@ -45,28 +46,38 @@ func readUSB(ep *gousb.InEndpoint) ([]byte, error) {
 	return buf, nil
 }
 
-func listen(ep *gousb.InEndpoint) chan []byte {
+type response struct {
+	data []byte
+	err  error
+}
+
+func listen(ep *gousb.InEndpoint) chan response {
 	buf := make([]byte, 10*ep.Desc.MaxPacketSize)
-	c := make(chan []byte)
+	c := make(chan response)
 
 	go func() {
 		for {
 			bytesread, err := ep.Read(buf)
 			if err != nil {
-				fmt.Printf("listen error: %s\n", err)
+				c <- response{[]byte{}, err}
 			}
 			buf = buf[:bytesread]
-			c <- buf
+			c <- response{buf, nil}
 		}
 	}()
 
 	return c
 }
 
-func readTimeout(c chan []byte, d time.Duration) ([]byte, error) {
+func read(c chan response, d time.Duration) ([]byte, error) {
+	if d == 0 {
+		resp := <-c
+		return resp.data, resp.err
+	}
+
 	select {
-	case data := <-c:
-		return data, nil
+	case resp := <-c:
+		return resp.data, resp.err
 	case <-time.After(d):
 		return []byte{}, errors.New("Timeout")
 	}
