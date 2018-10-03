@@ -53,7 +53,6 @@ var ROMConf = configuration{0x0451, 0x6141, 1, 1, 0, 1, 2}
 var SPLConf = configuration{0x0525, 0xa4a2, 2, 1, 0, 1, 1}
 
 func open(conf configuration, file string) bool {
-	fmt.Printf("open %+v\n, %s", conf, file)
 	dev, err := ctx.OpenDeviceWithVIDPID(conf.vid, conf.pid)
 	if err == gousb.ErrorAccess {
 		fmt.Println("Access denied")
@@ -97,22 +96,23 @@ func open(conf configuration, file string) bool {
 		if request == "BOOTP" {
 			fmt.Print("bootp")
 			data, _ = processBOOTP(indata, file)
+			sendUSB(oep, data)
 		} else if request == "ARP" {
 			fmt.Print(", arp")
 			data, _ = processARP(indata)
+			sendUSB(oep, data)
 		} else if request == "TFTP" {
 			fmt.Print(", tftp\n\n")
 			data, _ = processTFTP(indata, file)
+			sendUSB(oep, data)
 		} else if request == "TFTP_Data" {
 			fmt.Print(".")
 			data, _ = processTFTPData(indata, file)
+			sendUSB(oep, data)
 			if string(data) == "" {
 				fmt.Print("\n")
 				return false
 			}
-		}
-		if string(data) != "" {
-			sendUSB(oep, data)
 		}
 	}
 	return true
