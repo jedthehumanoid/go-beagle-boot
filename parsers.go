@@ -25,9 +25,9 @@ func identifyRequest(buf []byte, length int) string {
 
 func processBOOTP(data []byte, filename string) ([]byte, error) {
 	var req struct {
-		_     [rndisSize]byte
+		_     rndisMessage
 		Ether etherHeader
-		Ipv4  ipv4Datagram
+		_     ipv4Datagram
 		Udp   udpHeader
 		Bootp incompleteBootpMessage
 	}
@@ -63,7 +63,7 @@ func processBOOTP(data []byte, filename string) ([]byte, error) {
 
 func processARP(data []byte) ([]byte, error) {
 	var req struct {
-		_     [rndisSize]byte
+		_     rndisMessage
 		Ether etherHeader
 		Arp   arpMessage
 	}
@@ -97,9 +97,9 @@ func processARP(data []byte) ([]byte, error) {
 
 func processTFTP(data []byte, filename string) ([]byte, error) {
 	var req struct {
-		_     [rndisSize]byte
+		_     rndisMessage
 		Ether etherHeader
-		Ipv4  ipv4Datagram
+		_     ipv4Datagram
 		Udp   udpHeader
 	}
 
@@ -142,9 +142,9 @@ func processTFTP(data []byte, filename string) ([]byte, error) {
 
 func processTFTPData(data []byte, filename string) ([]byte, error) {
 	var req struct {
-		_     [rndisSize]byte
+		_     rndisMessage
 		Ether etherHeader
-		Ipv4  ipv4Datagram
+		_     ipv4Datagram
 		Udp   udpHeader
 		Tftp  tftpData
 	}
