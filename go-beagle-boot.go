@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"time"
 
 	"github.com/google/gousb"
@@ -71,9 +70,9 @@ func open(conf configuration, file string) error {
 	check(err)
 	defer config.Close()
 
-	if file == "spl" && (runtime.GOOS == "windows" || runtime.GOOS == "darwin") {
-		initRNDIS(dev)
-	}
+	//Initialize RNDIS on all machine types. This is necessary for BOOTP.
+	initRNDIS(dev)
+
 	intf, err := config.Interface(conf.intf, conf.alt)
 	check(err)
 	defer intf.Close()
